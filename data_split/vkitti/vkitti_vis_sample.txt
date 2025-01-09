@@ -1,0 +1,3 @@
+Scene01/overcast/frames/rgb/Camera_1_event/LINEAR/event_frame_00015.tif Scene01/overcast/frames/depth/Camera_1/depth_00016.png (val)
+Scene01/overcast/frames/rgb/Camera_0_event/LINEAR/event_frame_00122.tif Scene01/overcast/frames/depth/Camera_0/depth_00123.png (val)
+Scene01/overcast/frames/rgb/Camera_1_event/LINEAR/event_frame_00314.tif Scene01/overcast/frames/depth/Camera_1/depth_00315.png (val)

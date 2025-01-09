@@ -27,10 +27,7 @@ import os
 
 
 class CarlaDataset(BaseDepthDataset):
-    def __init__(
-        self,
-        **kwargs,
-    ) -> None:
+    def __init__(self, **kwargs,) -> None:
         super().__init__(
             # Carla data parameter
             min_depth=1e-5,

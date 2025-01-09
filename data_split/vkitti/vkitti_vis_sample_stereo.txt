@@ -1,0 +1,3 @@
+Scene01/clone/frames/rgb/Camera_0_event/event_frames/event_00020.tif Scene01/clone/frames/rgb/Camera_1_event/event_frames/event_00020.tif Scene01/clone/frames/depth/Camera_0/depth_00021.png (val)
+Scene01/clone/frames/rgb/Camera_0_event/event_frames/event_00032.tif Scene01/clone/frames/rgb/Camera_1_event/event_frames/event_00032.tif Scene01/clone/frames/depth/Camera_0/depth_00033.png (val)
+Scene01/15-deg-right/frames/rgb/Camera_0_event/event_frames/event_00412.tif Scene01/15-deg-right/frames/rgb/Camera_1_event/event_frames/event_00412.tif Scene01/15-deg-right/frames/depth/Camera_0/depth_00413.png (val)

@@ -33,7 +33,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.transforms import InterpolationMode, Resize
 
-from src.util.depth_transform import DepthNormalizerBase
+from src.utils.event.depth_transform import DepthNormalizerBase
 
 
 class DatasetMode(Enum):

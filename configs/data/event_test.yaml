@@ -1,0 +1,31 @@
+_target_: src.data.event_datamodule.EventDataModule
+batch_size: 12
+num_workers: 12
+data_config:
+  mode: train
+  name: mixed
+  prob_ls: [0.8,0.2]
+  base_dir_dir: /shared/ad150/event3d/
+  dataset_list:
+    - name: carla
+      disp_name: carla_train
+      dir: /shared/ad150/event3d/carla/
+      filenames: data_split/carla/carla_train.txt
+      resize_to_hw:
+        - 256
+        - 344
+    - name: vkitti
+      disp_name: vkitti_train
+      dir: /shared/ad150/event3d/vkitti2/
+      filenames: data_split/vkitti/vkitti_train.txt
+      kitti_bm_crop: true
+      valid_mask_crop: null
+augmentation:
+  lr_flip_p: 0.5
+depth_transform:
+  type: reversible_normalization
+  clip: true
+  norm_min: -1.0
+  norm_max: 1.0
+  min_max_quantile: 0.02
+  max_depth: 250.0
