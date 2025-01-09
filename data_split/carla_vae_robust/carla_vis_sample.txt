@@ -1,0 +1,5 @@
+Town10_val/events/frames_event/VAE_ROBUST/event_frame_0200.tif Town10_val/depth/data/depth_0000000200.npy (val)
+multimodal/Town05/sequence_1_val/events/frames_event/VAE_ROBUST/event_frame_0123.tif multimodal/Town05/sequence_1_val/depth/data/05_001_0123_depth.npy (val)
+Town10_val/events/frames_event/VAE_ROBUST/event_frame_0333.tif Town10_val/depth/data/depth_0000000333.npy (val)
+Town10_val/events/frames_event/VAE_ROBUST/event_frame_0143.tif Town10_val/depth/data/depth_0000000143.npy (val)
+Town10_val/events/frames_event/VAE_ROBUST/event_frame_0547.tif Town10_val/depth/data/depth_0000000547.npy (val)

@@ -57,6 +57,7 @@ class EventDataModule(LightningDataModule):
         self.save_hyperparameters(logger=False, ignore=("data_config",))
         # to be defined elsewhere
         self.loader_generator = None
+        self.depth_transform = None
         self.train_dataset = None
         self.train_loader = None
         return
@@ -64,13 +65,15 @@ class EventDataModule(LightningDataModule):
 
     def setup(self, stage: Optional[str] = None):
         self.loader_generator = torch.Generator().manual_seed(self.hparams.seed)
+        # transform
+        self.depth_transform = get_depth_normalizer(cfg_normalizer=self.hparams.depth_transform_args)
         # train dataset
         self.train_dataset = get_dataset(
             self.data_config.train,
             base_data_dir= self.data_config.base_dir,
             mode=DatasetMode.TRAIN,
             augmentation_args= self.hparams.augmentation_args,
-            depth_transform=self.hparams.depth_transform_args,)
+            depth_transform=self.depth_transform,)
          # TODO validation dataset
 
     def train_dataloader(self) -> TRAIN_DATALOADERS:
