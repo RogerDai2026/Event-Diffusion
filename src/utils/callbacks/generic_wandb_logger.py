@@ -1,17 +1,12 @@
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 import torch
-import torch.nn.functional as F
-from torchvision.utils import make_grid
 from lightning import LightningModule, Trainer
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 from lightning.pytorch.utilities import rank_zero_only
 import wandb
-from matplotlib import pyplot as plt
 from lightning.pytorch.callbacks import RichProgressBar, Callback
-from src.utils.helper import wandb_display_grid, cm_, visualize_batch
-from src.utils.metrics import calc_mae, calc_bias
 
 
 class GenericLogger(Callback, ABC):
@@ -50,7 +45,6 @@ class GenericLogger(Callback, ABC):
         self.rainfall_dataset = None
         self.progress_bar = None
         self.sampling_pbar_desc = 'Sampling on validation set...'
-        # self.first_samples_logged = False
         self.first_batch_visualized = False
         return
 
@@ -71,7 +65,7 @@ class GenericLogger(Callback, ABC):
         # visualize the first batch in logger
         batch, _ = batch  # discard coordinates
         if not self.first_batch_visualized:
-            visualize_batch(**batch)
+            self.visualize_batch(**batch)
             self.first_batch_visualized = True
         return
 
@@ -79,7 +73,7 @@ class GenericLogger(Callback, ABC):
     def on_train_batch_end(self, trainer: Trainer, pl_module: LightningModule, outputs: Any,
                            batch: Any, batch_idx: int) -> None:
         if self._check_frequency(trainer, 'score'):
-            self._log_score(pl_module, outputs)
+            self.log_score(pl_module, outputs)
 
     @rank_zero_only
     def on_train_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
@@ -89,15 +83,19 @@ class GenericLogger(Callback, ABC):
     def on_validation_batch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", outputs: STEP_OUTPUT,
                                 batch: Any, batch_idx: int, dataloader_idx: int = 0) -> None:
         if self._check_frequency(trainer, 'img'):
-            self._log_samples(trainer, pl_module, outputs)
+            self.log_samples(trainer, pl_module, outputs)
             self.save_ckpt(trainer)
 
     @abstractmethod
-    def _log_score(self, pl_module: LightningModule, outputs: Dict[str, torch.Tensor]):
+    def log_score(self, pl_module: LightningModule, outputs: Dict[str, torch.Tensor]):
         pass
 
     @abstractmethod
-    def _log_samples(self, trainer: Trainer, pl_module: LightningModule, outputs: Dict[str, torch.Tensor]):
+    def log_samples(self, trainer: Trainer, pl_module: LightningModule, outputs: Dict[str, torch.Tensor]):
+        pass
+
+    @abstractmethod
+    def visualize_batch(self, **kwargs):
         pass
 
     def _check_frequency(self, trainer: "pl.trainer", key: str):
@@ -107,6 +105,8 @@ class GenericLogger(Callback, ABC):
             check_idx = trainer.global_step
         elif self.check_freq_via == 'epoch':
             check_idx = trainer.current_epoch
+        else:
+            raise NotImplementedError(f"Frequency check via {self.check_freq_via} not implemented yet.")
         if check_idx >= self.next_log_idx[key]:
             self.next_log_idx[key] = check_idx + self.freqs[key]
             return True
