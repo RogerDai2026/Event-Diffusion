@@ -394,7 +394,7 @@ def get_pc_sampler(sde, shape, predictor, corrector, inverse_scaler, snr,
                                             snr=snr,
                                             n_steps=n_steps)
 
-    def pc_sampler(model, null_condition, condition=None, w=None):
+    def pc_sampler(model, null_condition, condition=None, w=0):
         """ The PC sampler function.
 
         Args:
@@ -404,18 +404,13 @@ def get_pc_sampler(sde, shape, predictor, corrector, inverse_scaler, snr,
         Returns:
           Samples, number of function evaluations.
         """
+        assert w == 0 , "classifier-free guidance not supported. Must set w=0"
         with torch.no_grad():
-            # if condition is None:  # unconditional sampling
-            # both conditional and unconditional sampling now use the same loop
-            # Initial sample FIXME: should x be single precision?
             x = sde.prior_sampling(shape).to(device)
             timesteps = torch.linspace(sde.T, eps, sde.N, device=device)
             if condition is None:  # unconditional sampling
-                # condition = null_condition.copy()
                 condition = null_condition.detach().clone()
                 w = -1
-
-            # TODO: this for loop is the bottleneck. Add a progress bar.
             for i in range(sde.N):
                 t = timesteps[i]
                 vec_t = torch.ones(shape[0], device=t.device) * t
@@ -423,42 +418,6 @@ def get_pc_sampler(sde, shape, predictor, corrector, inverse_scaler, snr,
                 x, x_mean = predictor_update_fn(x, vec_t, model=model, c=condition, w=w, null_cond=null_condition)
 
             return inverse_scaler(x_mean if denoise else x), sde.N * (n_steps + 1)
-            # else:  # Conditional sampling
-            #     x = sde.prior_sampling(shape).to(device)
-            #     timesteps = torch.linspace(sde.T, eps, sde.N, device=device)
-            #     for i in range(sde.N):
-            #         t = timesteps[i]
-            #         # corrupt conditional signal with noise
-            #         vec_t = torch.ones(shape[0], device=t.device) * t
-            #         # FIXME: removed data corruption during sampling
-            #         # condition_mean, std = sde.marginal_prob(condition, vec_t)
-            #         # condition_data = condition_mean + torch.randn_like(x) * std[:, None, None, None]
-            #         # forward pass through conditional model
-            #         x_c, x_mean_c = corrector_update_fn(x, vec_t, model=model, c=condition)  # used to be condition
-            #         x_c, x_mean_c = predictor_update_fn(x_c, vec_t, model=model, c=condition)  # used to be condition
-            #         # forward pass through unconditional model
-            #         x, x_mean = corrector_update_fn(x, vec_t, model=model, c=None)
-            #         x, x_mean = predictor_update_fn(x, vec_t, model=model, c=None)
-            #         # merge two predictions
-            #         x = (1 + w) * x_c - w * x
-            #         x_mean = (1 + w) * x_mean_c - w * x_mean
-
-                # return inverse_scaler(x_mean if denoise else x), sde.N * (n_steps + 1)
-
-                # naive implementation of conditional sampling
-                # x = sde.prior_sampling(shape).to(device)
-                # timesteps = torch.linspace(sde.T, eps, sde.N, device=device)
-                # for i in range(sde.N):
-                #     # print('sde.N = ', i)
-                #     t = timesteps[i]
-                #     vec_t = torch.ones(shape[0], device=t.device) * t
-                #     x, x_mean = corrector_update_fn(x, vec_t, model=model, c=condition)
-                #     # line below is modified
-                #     # x = torch.tensor(x, dtype=torch.float32)
-                #     x, x_mean = predictor_update_fn(x, vec_t, model=model)
-                #
-                # return inverse_scaler(x_mean if denoise else x), sde.N * (n_steps + 1)
-
     return pc_sampler
 
 
