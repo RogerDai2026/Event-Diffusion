@@ -1,5 +1,6 @@
 import os
 from typing import Any, Dict, Optional
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torchvision.utils import make_grid
@@ -34,6 +35,12 @@ class EventLogger(GenericLogger):
         super().__init__(train_log_img_freq, train_log_score_freq, train_log_param_freq, show_samples_at_start,
                          show_unconditional_samples, check_freq_via, enable_save_ckpt, add_reference_artifact,
                          report_sample_metrics)
+        # to be defined elsewhere
+        self.depth_transformer = None
+
+    def on_train_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        super().on_train_start(trainer, pl_module)
+        self.depth_transformer = trainer.datamodule.depth_transform
 
     def log_score(self, pl_module: LightningModule, outputs: Dict[str, torch.Tensor]):
         pass # TODO
@@ -41,29 +48,46 @@ class EventLogger(GenericLogger):
     def log_samples(self, trainer: Trainer, pl_module: LightningModule, outputs: Dict[str, torch.Tensor]):
         pass # TODO
 
+    def visualize_batch(self, **kwargs):
+        vis_param = {
+            # 'rgb_int': None,
+            'rgb_norm': None,
+            'depth_raw_linear': 'magma',
+            # 'depth_filled_linear': 'magma',
+            # 'valid_mask_raw': None,
+            # 'valid_mask_filled': None,
+            'depth_raw_norm': 'magma',
+            # 'depth_filled_norm': 'magma',
+        }
+        allowed_entries = vis_param.keys()
+
+        n = 5
+        for k, v in kwargs.items():
+            if k not in allowed_entries:
+                continue
+            grid = make_grid(v[0:n, :, :, :])
+            grid_mono = grid[0, :, :].unsqueeze(0)
+            if 'depth_raw_norm' == k:
+                grid_mono = self.depth_transformer.denormalize(grid_mono)
+            if 'depth' in k:
+                grid_mono = unnormalize_depth(grid_mono, amin=5, amax=25000)
+            if vis_param[k] is None:
+                images = wandb.Image(grid, caption=k)
+            else:
+                cm_grid = cm_(grid_mono.detach().cpu(), vis_param[k])
+                images = wandb.Image(cm_grid, caption=k)
+            wandb.log({f"dataloader/{k}": images})
+        return
 
 
 ############################ STATIC METHODS ############################
 
-def visualize_batch(**kwargs):
-    vis_param = {
-        'rgb_int': None,
-        'rgb_norm': None,
-        'depth_raw_linear': 'inferno',
-        'depth_filled_linear': 'inferno',
-        'valid_mask_raw': 'inferno',
-        'valid_mask_filled': 'inferno',
-        'depth_raw_norm': 'inferno',
-        'depth_filled_norm': 'inferno',
-    }
-    n = 5
-    for k, v in kwargs.items():
-        grid = make_grid(v[0:n, :, :, :])
-        grid_mono = grid[0, :, :].unsqueeze(0)
-        if vis_param[k] is None:
-            images = wandb.Image(grid, caption=k)
-        else:
-            cm_grid = cm_(grid_mono.detach().cpu(), vis_param[k])
-            images = wandb.Image(cm_grid, caption=k)
-        wandb.log({f"dataloader/{k}": images})
-    return
+def unnormalize_depth(img, amax, amin=None):
+    # img_temp = img[:h, :w]
+    img_temp = torch.clip(img, min=amin, max=amax)
+    img_temp = torch.log(1/img_temp)
+    img_temp = (img_temp - img_temp.min())/torch.abs(img_temp.max() - img_temp.min())
+    # img_temp = plt.cm.magma(img_temp)[:,:,:3]
+    # img_magma = (img_temp * 255).astype(np.uint8)
+    # return img_magma
+    return img_temp

@@ -42,7 +42,7 @@ class GenericLogger(Callback, ABC):
             raise NotImplementedError('Unconditional samples not implemented yet.')
 
         # to be defined elsewhere
-        self.rainfall_dataset = None
+        # self.rainfall_dataset = None
         self.progress_bar = None
         self.sampling_pbar_desc = 'Sampling on validation set...'
         self.first_batch_visualized = False
@@ -51,7 +51,7 @@ class GenericLogger(Callback, ABC):
     @rank_zero_only
     def on_fit_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
         wandb.run.summary['logdir'] = trainer.default_root_dir
-        self.rainfall_dataset = trainer.datamodule.precip_dataset
+        # self.rainfall_dataset = trainer.datamodule.precip_dataset
 
         for callback in trainer.callbacks:
             if isinstance(callback, RichProgressBar):
@@ -63,7 +63,7 @@ class GenericLogger(Callback, ABC):
     def on_train_batch_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", batch: Any,
                              batch_idx: int) -> None:
         # visualize the first batch in logger
-        batch, _ = batch  # discard coordinates
+        # batch, _ = batch  # discard coordinates
         if not self.first_batch_visualized:
             self.visualize_batch(**batch)
             self.first_batch_visualized = True

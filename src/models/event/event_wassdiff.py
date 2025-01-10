@@ -343,4 +343,5 @@ class EventWassDiffLitModule(LightningModule):
 
 
 if __name__ == "__main__":
-    _ = WassDiffLitModule(None, None, None, None)
+    # _ = WassDiffLitModule(None, None, None, None)
+    pass
