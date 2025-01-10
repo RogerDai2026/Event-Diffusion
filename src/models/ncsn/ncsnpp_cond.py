@@ -58,9 +58,6 @@ class NCSNppCond(nn.Module):
 
     def __init__(self, model_config):
         super().__init__()
-
-        # takes care of LiT config wrapping issue
-        # config = SimpleNamespace(model=SimpleNamespace(**model_config))
         config = model_config
 
         self.config = config
@@ -104,7 +101,6 @@ class NCSNppCond(nn.Module):
 
         elif embedding_type == 'positional':
             embed_dim = nf
-
         else:
             raise ValueError(f'embedding type {embedding_type} unknown.')
 

@@ -1,6 +1,6 @@
 _target_: src.data.event_datamodule.EventDataModule
-batch_size: 12
-num_workers: 12
+batch_size: 6
+num_workers: 6
 pin_memory: false
 seed: 42
 

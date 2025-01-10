@@ -19,7 +19,7 @@ from src.utils.ncsn_utils.losses import get_optimizer
 from src.utils.helper import yprint
 
 
-class WassDiffLitModule(LightningModule):
+class EventWassDiffLitModule(LightningModule):
     """
     """
 
@@ -198,8 +198,8 @@ class WassDiffLitModule(LightningModule):
         :param batch_idx: The index of the current batch.
         :return: A tensor of losses between model predictions and targets.
         """
-        batch_dict, _ = batch  # discard coordinates
-        condition, gt = self._generate_condition(batch_dict)
+        # batch_dict, _ = batch  # discard coordinates
+        condition, gt = self._generate_condition(batch)
         condition, context_mask = self._dropout_condition(condition)
         loss, loss_dict = self.train_step_fn(self.state, gt, condition)
 
@@ -209,7 +209,7 @@ class WassDiffLitModule(LightningModule):
                      batch_size=condition.shape[0])
             self.log("train/score_loss", loss_dict['score_loss'], on_step=True, on_epoch=False, prog_bar=False,
                      batch_size=condition.shape[0])
-        step_output = {"batch_dict": batch_dict, "loss_dict": loss_dict, 'condition': condition,
+        step_output = {"batch_dict": batch, "loss_dict": loss_dict, 'condition': condition,
                        'context_mask': context_mask}
         return step_output
 
@@ -302,31 +302,32 @@ class WassDiffLitModule(LightningModule):
         return sampling_null_condition.to(self.device)
 
     def _generate_condition(self, batch_dict: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
-        y = self.scaler(batch_dict['precip_gt'])  # .to(config.device))
+        condition = self.scaler(batch_dict['rgb_norm'])  # .to(config.device))
+        y = batch_dict['depth_raw_norm']  # .to(config.device))
 
-        if self.model_config.data.condition_mode == 0:
-            raise AttributeError()  # deprecated
-        elif self.model_config.data.condition_mode == 1:
-            condition = batch_dict['precip_up']
-        elif self.model_config.data.condition_mode in [2, 6]:
-            exclude_keys = ['precip_lr', 'precip_gt']
-            tensors_to_stack = [tensor for key, tensor in batch_dict.items() if key not in exclude_keys]
-            stacked_tensor = torch.cat(tensors_to_stack, dim=1)
-            condition = stacked_tensor
-        elif self.model_config.data.condition_mode == 3:
-            exclude_keys = ['precip_lr', 'precip_gt', 'precip_up']
-            tensors_to_stack = [tensor for key, tensor in batch_dict.items() if key not in exclude_keys]
-            stacked_tensor = torch.cat(tensors_to_stack, dim=1)
-            condition = stacked_tensor
-        elif self.model_config.data.condition_mode == 4:
-            condition = batch_dict['precip_masked']
-        elif self.model_config.data.condition_mode == 5:
-            exclude_keys = ['precip_gt', 'mask']
-            tensors_to_stack = [tensor for key, tensor in batch_dict.items() if key not in exclude_keys]
-            stacked_tensor = torch.cat(tensors_to_stack, dim=1)
-            condition = stacked_tensor
-        else:
-            raise AttributeError()
+        # if self.model_config.data.condition_mode == 0:
+        #     raise AttributeError()  # deprecated
+        # elif self.model_config.data.condition_mode == 1:
+        #     condition = batch_dict['precip_up']
+        # elif self.model_config.data.condition_mode in [2, 6]:
+        #     exclude_keys = ['precip_lr', 'precip_gt']
+        #     tensors_to_stack = [tensor for key, tensor in batch_dict.items() if key not in exclude_keys]
+        #     stacked_tensor = torch.cat(tensors_to_stack, dim=1)
+        #     condition = stacked_tensor
+        # elif self.model_config.data.condition_mode == 3:
+        #     exclude_keys = ['precip_lr', 'precip_gt', 'precip_up']
+        #     tensors_to_stack = [tensor for key, tensor in batch_dict.items() if key not in exclude_keys]
+        #     stacked_tensor = torch.cat(tensors_to_stack, dim=1)
+        #     condition = stacked_tensor
+        # elif self.model_config.data.condition_mode == 4:
+        #     condition = batch_dict['precip_masked']
+        # elif self.model_config.data.condition_mode == 5:
+        #     exclude_keys = ['precip_gt', 'mask']
+        #     tensors_to_stack = [tensor for key, tensor in batch_dict.items() if key not in exclude_keys]
+        #     stacked_tensor = torch.cat(tensors_to_stack, dim=1)
+        #     condition = stacked_tensor
+        # else:
+        #     raise AttributeError()
         return condition, y
 
     def _dropout_condition(self, condition: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:

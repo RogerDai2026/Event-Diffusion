@@ -1,4 +1,4 @@
-_target_: src.models.precip_downscale.wassdiff.WassDiffLitModule
+_target_: src.models.event.event_wassdiff.EventWassDiffLitModule
 
 compile: false
 num_samples: 1 # for inference, aka ensemble size
@@ -52,13 +52,13 @@ model_config:
     w_guide: 0
     null_token: -1
   data:
-    image_size: [256, 344]
-#    condition_mode: ${data.data_config.condition_mode}
-    num_channels: 3
-#    num_context_chs: 3
+    image_size: 256 # [256, 344]
+    condition_mode: 3 # ${data.data_config.condition_mode}
+    num_channels: 1
+    num_context_chs: 3
 #    condition_size: ${data.data_config.condition_size}
-    centered: true
-#    precip_rescale_c: ${data.data_config.precip_rescale_c}
+    centered: false
+    precip_rescale_c: 1
   training:
 #    batch_size: null # TODO: remove this
     n_iters: 500000
