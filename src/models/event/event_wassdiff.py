@@ -33,7 +33,6 @@ class WassDiffLitModule(LightningModule):
         :param scheduler: The learning rate scheduler to use for training.
         """
         super().__init__()
-
         self.net = mutils.create_model(model_config)
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
@@ -68,7 +67,7 @@ class WassDiffLitModule(LightningModule):
         # Compile via JiT
         if self.hparams.compile and stage == "fit":
             raise NotImplementedError("JIT compilation not supported for training.")
-            self.net = torch.compile(self.net)
+            # self.net = torch.compile(self.net)
 
     def configure_optimizers(self) -> Dict[str, Any]:
         """Choose what optimizers and learning-rate schedulers to use in your optimization.

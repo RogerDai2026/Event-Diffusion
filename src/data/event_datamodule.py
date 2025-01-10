@@ -5,9 +5,6 @@ from lightning import LightningDataModule
 from lightning.pytorch.utilities.types import TRAIN_DATALOADERS
 from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split, SubsetRandomSampler
 from hydra import compose, initialize
-# from src.data.cpc_mrms_dataset import DailyAggregateRainfallDataset
-# from src.data.precip_dataloader_inference import (RainfallSpecifiedInference, PreSavedPrecipDataset,
-#                                                   xarray_collate_fn, do_nothing_collate_fn)
 from src.data.depth import get_dataset, DatasetMode
 from src.utils.event.depth_transform import DepthNormalizerBase, get_depth_normalizer
 
