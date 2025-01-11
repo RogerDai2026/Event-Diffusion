@@ -46,17 +46,6 @@ class EventLogger(GenericLogger):
     def log_score(self, pl_module: LightningModule, outputs: Dict[str, torch.Tensor]):
        pass # TODO
 
-    def on_validation_batch_start(
-        self,
-        trainer: "pl.Trainer",
-        pl_module: "pl.LightningModule",
-        batch: Any,
-        batch_idx: int,
-        dataloader_idx: int = 0,
-    ) -> None:
-        self.visualize_batch(**batch)
-        print('batch visualized for validation')
-
     def log_samples(self, trainer: Trainer, pl_module: LightningModule, outputs: Dict[str, torch.Tensor]):
         pbar_taskid, original_pbar_desc = self._modify_pbar_desc()
 
@@ -65,33 +54,41 @@ class EventLogger(GenericLogger):
         gt = outputs['batch_dict']['depth_raw_norm']
         config = pl_module.model_config
         s = pl_module.model_config.sampling.sampling_batch_size
-        # sample = pl_module.sample(condition[0:s])
+        sample = pl_module.sample(condition[0:s])
 
-        # save this tensor
-        sample = torch.load('/home/yl241/workspace/Event-WassDiff/tmp/sample.pt')
-        # torch.save(sample, '/home/yl241/workspace/Event-WassDiff/tmp/sample.pt')
-        print('sample saved')
+        condition_grid = make_grid(condition[0:s].detach().cpu(), nrow=s).permute(1, 2, 0)
 
         sample_metric = self.depth_transformer.denormalize(sample)
         sample_vis = map_depth_for_vis(sample_metric, amin=5, amax=25000)
-        gt_metric = self.depth_transformer.denormalize(gt[0:s])
-        gt_vis = map_depth_for_vis(gt_metric, amin=5, amax=25000)
+        sample_grid = make_grid(sample_vis, nrow=s)[0, :, :]
+        sample_grid_cm = cm_(sample_grid.detach().cpu(), 'magma')
 
-        fig, axs = plt.subplots(3, s, figsize=(s * 5, 15))
-        for i in range(s):
-            axs[0, i].imshow(condition[i, :, :, :].detach().cpu().permute(1, 2, 0).numpy())
-            axs[1, i].imshow(gt[i, 0, :, :].detach().cpu().numpy(), cmap='magma')
-            axs[2, i].imshow(sample[i, 0, :, :].detach().cpu().numpy(), cmap='magma')
+        gt_metric = self.depth_transformer.denormalize(gt[0:s])
+        gt_vis = map_depth_for_vis(gt_metric, amin=s, amax=25000)
+        gt_grid = make_grid(gt_vis, nrow=s)[0, :, :]
+        gt_grid_cm = cm_(gt_grid.detach().cpu(), 'magma')
+
+        # put 3 grids in one plt image, row by row
+        fig, axs = plt.subplots(3, 1, figsize=(s*5, 15))
+        axs[0].imshow(condition_grid.detach().cpu().numpy())
+        axs[1].imshow(sample_grid_cm)
+        axs[2].imshow(gt_grid_cm)
+        # turn off ticks
+        for ax in axs:
+            ax.set_xticks([])
+            ax.set_yticks([])
 
         plt.tight_layout()
         plt.close(fig)
-        images = wandb.Image(fig)
+        images = wandb.Image(fig, caption="condition, prediction, GT")
         wandb.log({"val/conditional_samples": images})
 
         # report metrics
-        # if self.report_sample_metrics:
-        #     mae = calc_mae(sample_metric.cpu().detach().numpy(), gt[0:s, :, :, :].cpu().detach().numpy(), valid_mask=None, k=1,
-        #                    pooling_func='mean')
+        if self.report_sample_metrics:
+            mae = calc_mae(sample_metric.cpu().detach().numpy(), gt[0:s, :, :, :].cpu().detach().numpy(), valid_mask=None, k=1,
+                           pooling_func='mean')
+
+        self._revert_pbar_desc(pbar_taskid, original_pbar_desc)
         return
 
     def log_samples_helper(self, condition, sample, gt, n):
