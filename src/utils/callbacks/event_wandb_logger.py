@@ -46,6 +46,17 @@ class EventLogger(GenericLogger):
     def log_score(self, pl_module: LightningModule, outputs: Dict[str, torch.Tensor]):
        pass # TODO
 
+    def on_validation_batch_start(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        batch: Any,
+        batch_idx: int,
+        dataloader_idx: int = 0,
+    ) -> None:
+        self.visualize_batch(**batch)
+        print('batch visualized for validation')
+
     def log_samples(self, trainer: Trainer, pl_module: LightningModule, outputs: Dict[str, torch.Tensor]):
         pbar_taskid, original_pbar_desc = self._modify_pbar_desc()
 
@@ -61,23 +72,16 @@ class EventLogger(GenericLogger):
         # torch.save(sample, '/home/yl241/workspace/Event-WassDiff/tmp/sample.pt')
         print('sample saved')
 
-        condition_grid = make_grid(condition[0:s].detach().cpu().permute(1, 2, 0), nrow=1)
-
         sample_metric = self.depth_transformer.denormalize(sample)
         sample_vis = map_depth_for_vis(sample_metric, amin=5, amax=25000)
-        sample_grid = make_grid(sample_vis, nrow=1)[0, :, :].unsqueeze(0)
-        sample_grid_cm = cm_(sample_grid.detach().cpu().permute(1, 2, 0), 'magma')
-
         gt_metric = self.depth_transformer.denormalize(gt[0:s])
         gt_vis = map_depth_for_vis(gt_metric, amin=5, amax=25000)
-        gt_grid = make_grid(gt_vis, nrow=1)[0, :, :].unsqueeze(0)
-        gt_grid_cm = cm_(gt_grid.detach().cpu().permute(1, 2, 0), 'magma')
 
-        # put 3 grids in one plt image, row by row
-        fig, axs = plt.subplots(3, 1, figsize=(5, 15))
-        axs[0].imshow(condition_grid.detach().cpu().numpy())
-        axs[1].imshow(gt_grid_cm.detach().cpu().numpy())
-        axs[2].imshow(sample_grid_cm.detach().cpu().numpy())
+        fig, axs = plt.subplots(3, s, figsize=(s * 5, 15))
+        for i in range(s):
+            axs[0, i].imshow(condition[i, :, :, :].detach().cpu().permute(1, 2, 0).numpy())
+            axs[1, i].imshow(gt[i, 0, :, :].detach().cpu().numpy(), cmap='magma')
+            axs[2, i].imshow(sample[i, 0, :, :].detach().cpu().numpy(), cmap='magma')
 
         plt.tight_layout()
         plt.close(fig)

@@ -9,7 +9,7 @@ root_dir = "/shared/ad150/event3d/carla/"
 # directory where the text files should be saved
 text_file_dir = "./data_split/carla/"
 # keyword to search for in the directory names
-keyword = "train"  # "train" or "val" or "vis_sample"
+keyword = "val"  # "train" or "val" or "vis_sample"
 # encoding = "VAE_ROBUST" # "LINEAR" or "PYRAMIDAL" pr "VAE_ROBUST"
 
 output_file = os.path.join(text_file_dir, f"carla_{keyword}.txt")
