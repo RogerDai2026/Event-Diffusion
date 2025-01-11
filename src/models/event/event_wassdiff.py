@@ -129,7 +129,7 @@ class EventWassDiffLitModule(LightningModule):
 
         # Building sampling functions
         sampling_shape = (self.model_config.sampling.sampling_batch_size, self.model_config.data.num_channels,
-                          self.model_config.data.image_size, self.model_config.data.image_size)
+                          self.model_config.sampling.shape[0], self.model_config.sampling.shape[1])
         self.sampling_fn = sampling.get_sampling_fn(self.model_config, sde, sampling_shape, self.inverse_scaler,
                                                     sampling_eps)
         # s = self.model_config.sampling.sampling_batch_size
@@ -220,12 +220,13 @@ class EventWassDiffLitModule(LightningModule):
             labels.
         :param batch_idx: The index of the current batch.
         """
-        batch_dict, _ = batch  # discard coordinates
-        condition, gt = self._generate_condition(batch_dict)
+        # batch_dict, _ = batch  # discard coordinates
+        batch = self._fill_missing_keys(batch)
+        condition, gt = self._generate_condition(batch)
         eval_loss, _ = self.eval_step_fn(self.state, gt, condition)
         self.log("val/loss", eval_loss, on_step=False, on_epoch=True, prog_bar=False,
                  batch_size=condition.shape[0], sync_dist=True)
-        step_output = {"batch_dict": batch_dict, "condition": condition}
+        step_output = {"batch_dict": batch, "condition": condition}
         return step_output
 
     def on_test_start(self):
@@ -301,9 +302,16 @@ class EventWassDiffLitModule(LightningModule):
                  self.model_config.data.image_size)) * self.model_config.model.null_token
         return sampling_null_condition.to(self.device)
 
+
+    def _fill_missing_keys(self, batch_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        if 'depth_raw_norm' not in batch_dict:
+            batch_dict['depth_raw_norm'] = self.trainer.datamodule.depth_transform(batch_dict['depth_raw_linear'])
+        return batch_dict
+
     def _generate_condition(self, batch_dict: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         condition = self.scaler(batch_dict['rgb_norm'])  # .to(config.device))
-        y = batch_dict['depth_raw_norm']  # .to(config.device))
+        y = batch_dict['depth_raw_norm']
+        return condition, y
 
         # if self.model_config.data.condition_mode == 0:
         #     raise AttributeError()  # deprecated
@@ -328,7 +336,7 @@ class EventWassDiffLitModule(LightningModule):
         #     condition = stacked_tensor
         # else:
         #     raise AttributeError()
-        return condition, y
+
 
     def _dropout_condition(self, condition: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         # implement dropout

@@ -80,4 +80,5 @@ model_config:
     predictor: 'reverse_diffusion'
     corrector: 'langevin'
     sampling_batch_size: 12
+    shape: [256, 344]  # TODO: hardcode for now
 

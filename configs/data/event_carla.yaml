@@ -15,6 +15,15 @@ data_config:
     resize_to_hw:
       - 256
       - 344
+  val:
+    name: carla
+    disp_name: carla_val
+    dir: /shared/ad150/event3d/carla/
+    filenames: ./data_split/carla/carla_val.txt
+    resize_to_hw:
+      - 256
+      - 344
+
 augmentation_args:
     lr_flip_p: 0.5
 depth_transform_args:
