@@ -1,10 +1,11 @@
 from typing import Any, Dict, Optional, Tuple
-import numpy as np
+# import numpy as np
 import torch
 from lightning import LightningDataModule
 from lightning.pytorch.utilities.types import TRAIN_DATALOADERS, EVAL_DATALOADERS
 from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split, SubsetRandomSampler
 from hydra import compose, initialize
+from tqdm import tqdm
 from src.data.depth import get_dataset, DatasetMode
 from src.utils.event.depth_transform import DepthNormalizerBase, get_depth_normalizer
 
@@ -100,6 +101,7 @@ class EventDataModule(LightningDataModule):
 if __name__ == '__main__':  # debug
     with initialize(version_base=None, config_path="../../configs/data", job_name="evaluation"):
         config = compose(config_name="event_carla")
+    # config.batch_size = 1
     data_module = EventDataModule(data_config=config.data_config, augmentation_args=config.augmentation_args,
                                   depth_transform_args=config.depth_transform_args, batch_size=config.batch_size,
                                   num_workers=config.num_workers, pin_memory=config.pin_memory, seed=config.seed)
@@ -113,7 +115,13 @@ if __name__ == '__main__':  # debug
     val_loader = data_module.val_dataloader()
     print(f"Val DataLoader initialized with {len(val_loader)} batches.")
     # Get the first batch
-    first_batch = next(iter(val_loader))
-    print(f"First batch: {first_batch}")
-    print(f"First batch keys: {first_batch.keys()}")
+    # first_batch = next(iter(val_loader))
+    # print(f"First batch: {first_batch}")
+    # print(f"First batch keys: {first_batch.keys()}")
     # print(f"First batch values: {first_batch.values()}")
+    # iterate through each batch
+
+    idx = 0
+    for batch in val_loader:
+        print(f"Batch {idx} | shape: {batch['rgb_norm'].shape}")
+        idx += 1

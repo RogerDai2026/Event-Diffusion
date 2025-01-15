@@ -6,7 +6,7 @@ from lightning import LightningModule, Trainer
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 from lightning.pytorch.utilities import rank_zero_only
 import wandb
-from lightning.pytorch.callbacks import RichProgressBar, Callback
+from lightning.pytorch.callbacks import RichProgressBar, Callback, ProgressBar
 
 
 class GenericLogger(Callback, ABC):
@@ -51,10 +51,8 @@ class GenericLogger(Callback, ABC):
     @rank_zero_only
     def on_fit_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
         wandb.run.summary['logdir'] = trainer.default_root_dir
-        # self.rainfall_dataset = trainer.datamodule.precip_dataset
-
         for callback in trainer.callbacks:
-            if isinstance(callback, RichProgressBar):
+            if isinstance(callback, RichProgressBar): # or isinstance(callback, ProgressBar):
                 self.progress_bar = callback
                 break
         return

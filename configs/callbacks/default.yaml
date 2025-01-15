@@ -23,7 +23,6 @@ defaults:
 #  patience: 100
 #  mode: "min"
 
-
 model_summary:
   max_depth: 3
   summarize_kwargs:

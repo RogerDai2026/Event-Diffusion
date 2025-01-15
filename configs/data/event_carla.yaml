@@ -1,17 +1,18 @@
 _target_: src.data.event_datamodule.EventDataModule
-batch_size: 6
-num_workers: 6
+batch_size: 10
+num_workers: 10
 pin_memory: false
 seed: 42
 
 data_config:
 #  _target_: src.data.depth.carla_dataset.CarlaDataset
   base_dir: /shared/ad150/event3d/
+  encoding_mode: 'carla_vae_robust'
   train:
     name: carla
     disp_name: carla_train
     dir: /shared/ad150/event3d/carla/
-    filenames: ./data_split/carla/carla_train.txt
+    filenames: ./data_split/${..encoding_mode}/carla_train.txt
     resize_to_hw:
       - 256
       - 344
@@ -19,7 +20,7 @@ data_config:
     name: carla
     disp_name: carla_val
     dir: /shared/ad150/event3d/carla/
-    filenames: ./data_split/carla/carla_val.txt
+    filenames: ./data_split/${..encoding_mode}/carla_val_single.txt  # TODO: change to carla_val.txt
     resize_to_hw:
       - 256
       - 344
