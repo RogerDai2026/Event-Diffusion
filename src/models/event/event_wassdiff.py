@@ -284,6 +284,7 @@ class EventWassDiffLitModule(LightningModule):
         sample, n = self.sampling_fn(self.net, condition=condition, w=config.model.w_guide,
                                      null_condition=sampling_null_condition)
         return sample
+
     def _generate_null_condition(self):
         # generate null condition for sampling
         s = self.model_config.sampling.sampling_batch_size
