@@ -6,12 +6,12 @@ seed: 42
 
 data_config:
 #  _target_: src.data.depth.carla_dataset.CarlaDataset
-  base_dir: /shared/ad150/event3d/
+  base_dir: ${local.data_dir}/
   encoding_mode: 'carla_vae_robust'
   train:
     name: carla
     disp_name: carla_train
-    dir: /shared/ad150/event3d/carla/
+    dir: ${local.data_dir}/carla/
     filenames: ./data_split/${..encoding_mode}/carla_train.txt
     resize_to_hw:
       - 256
@@ -19,7 +19,7 @@ data_config:
   val:
     name: carla
     disp_name: carla_val
-    dir: /shared/ad150/event3d/carla/
+    dir: ${local.data_dir}/carla/
     filenames: ./data_split/${..encoding_mode}/carla_val_single.txt  # TODO: change to carla_val.txt
     resize_to_hw:
       - 256
