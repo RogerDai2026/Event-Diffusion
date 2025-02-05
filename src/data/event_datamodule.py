@@ -86,6 +86,7 @@ class EventDataModule(LightningDataModule):
             self.train_loader = DataLoader(dataset=self.train_dataset,
                                            batch_size=self.hparams.batch_size,
                                            num_workers=self.hparams.num_workers,
+                                           pin_memory=self.hparams.pin_memory,
                                            shuffle=True,
                                            generator=self.loader_generator,)
         return self.train_loader
@@ -93,7 +94,8 @@ class EventDataModule(LightningDataModule):
     def val_dataloader(self) -> EVAL_DATALOADERS:
         self.val_loader = DataLoader(dataset=self.val_dataset,
                                      batch_size=self.hparams.batch_size,
-                                     num_workers=self.hparams.num_workers,
+                                     num_workers=4,
+                                     pin_memory=self.hparams.pin_memory,
                                      shuffle=False,
                                      generator=self.loader_generator,)
         return self.val_loader
