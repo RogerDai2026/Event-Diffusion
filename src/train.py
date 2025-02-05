@@ -82,6 +82,10 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         log.info("Logging hyperparameters!")
         log_hyperparameters(object_dict)
 
+    if cfg.get("set_float32_matmul_precision"):
+        torch.set_float32_matmul_precision(cfg.get("set_float32_matmul_precision"))
+        log.info(f"Setting float32_matmul_precision to {cfg.get('set_float32_matmul_precision')}")
+
     if cfg.get("train"):
         log.info("Starting training!")
         trainer.fit(model=model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path"))

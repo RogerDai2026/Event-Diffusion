@@ -2,6 +2,7 @@ import os
 from typing import Any, Dict, List, Tuple
 import hydra
 import rootutils
+import torch
 from lightning import Callback, LightningDataModule, LightningModule, Trainer
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig, OmegaConf
@@ -85,6 +86,11 @@ def evaluate(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     if logger:
         log.info("Logging hyperparameters!")
         log_hyperparameters(object_dict)
+
+    if cfg.get("set_float32_matmul_precision"):
+        raise NotImplementedError("double check precision for test.")
+        # torch.set_float32_matmul_precision(cfg.get("set_float32_matmul_precision"))
+        # log.info(f"Setting float32_matmul_precision to {cfg.get('set_float32_matmul_precision')}")
 
     log.info("Starting testing!")
     trainer.test(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
