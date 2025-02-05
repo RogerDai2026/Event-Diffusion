@@ -45,10 +45,10 @@ class EventLogger(GenericLogger):
         self.depth_transformer = trainer.datamodule.depth_transform
 
     def log_score(self, pl_module: LightningModule, outputs: Dict[str, torch.Tensor]):
-       pass # TODO
+        pass # TODO
 
     def log_samples(self, trainer: Trainer, pl_module: LightningModule, outputs: Dict[str, torch.Tensor]):
-        pbar_taskid, original_pbar_desc = self._modify_pbar_desc()
+        pbar_taskid, original_pbar_desc = self._modify_pbar_desc(stage=trainer.state.stage)
 
         condition = outputs['condition']
         batch_dict = outputs['batch_dict']

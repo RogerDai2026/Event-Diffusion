@@ -1,6 +1,6 @@
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 import torch
 from lightning import LightningModule, Trainer
 from lightning.pytorch.utilities.types import STEP_OUTPUT
@@ -47,6 +47,7 @@ class GenericLogger(Callback, ABC):
         # to be defined elsewhere
         # self.rainfall_dataset = None
         self.progress_bar = None
+        self.pbar_type = None
         self.sampling_pbar_desc = 'Sampling on validation set...'
         self.first_batch_visualized = False
         return
@@ -55,8 +56,13 @@ class GenericLogger(Callback, ABC):
     def on_fit_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
         wandb.run.summary['logdir'] = trainer.default_root_dir
         for callback in trainer.callbacks:
-            if isinstance(callback, RichProgressBar): # or isinstance(callback, ProgressBar):
+            if isinstance(callback, RichProgressBar):
                 self.progress_bar = callback
+                self.pbar_type = "rich"
+                break
+            if isinstance(callback, ProgressBar):
+                self.progress_bar = callback
+                self.pbar_type = "tqdm"
                 break
         return
 
@@ -115,7 +121,47 @@ class GenericLogger(Callback, ABC):
         else:
             return False
 
-    def _modify_pbar_desc(self):
+    def detect_pbar(self):
+        if hasattr(self.progress_bar, "progress") and self.progress_bar.progress is not None:
+            self.pbar_type = "rich"
+        elif hasattr(self.progress_bar, "set_description"):
+            self.pbar_type = "tqdm"
+        else:
+            raise NotImplementedError("Progress bar type not recognized.")
+
+    def _modify_pbar_desc(self, stage: Optional[str] = None):
+        if self.pbar_type == "rich":
+            return self._modify_rich_pbar_desc()
+        elif self.pbar_type == "tqdm":
+            assert stage is not None, "Stage must be provided for tqdm progress bar."
+            return self._modify_tqdm_pbar_desc(stage)
+
+    def _revert_pbar_desc(self, task_id, original_description):
+        if self.pbar_type == "rich":
+            self._revert_rich_pbar_desc(task_id, original_description)
+        elif self.pbar_type == "tqdm":
+            self._revert_tqdm_pbar_desc(task_id, original_description)
+
+    def _modify_tqdm_pbar_desc(self, stage: str):
+        # find the current pbar according to the stage
+        if stage == "validation" or stage == "sanity_check":
+            current_pbar = self.progress_bar.val_progress_bar
+        else:
+            raise NotImplementedError()
+        original_description = getattr(current_pbar, "desc")
+        current_pbar.set_description(self.sampling_pbar_desc)
+        # self.progress_bar.refresh()
+        return None, original_description
+
+    def _revert_tqdm_pbar_desc(self, stage: str, original_description: str):
+        if stage == "validation" or stage == "sanity_check":
+            current_pbar = self.progress_bar.val_progress_bar
+        else:
+            raise NotImplementedError()
+        self.progress_bar.set_description(original_description)
+        # self.progress_bar.refresh()
+
+    def _modify_rich_pbar_desc(self):
         task_id, original_description = None, None
         # Ensure progress bar is active and tasks are initialized
         if self.progress_bar.progress is not None and len(self.progress_bar.progress.tasks) > 0:
@@ -129,7 +175,7 @@ class GenericLogger(Callback, ABC):
                     self.progress_bar.progress.refresh()
         return task_id, original_description
 
-    def _revert_pbar_desc(self, task_id, original_description):
+    def _revert_rich_pbar_desc(self, task_id, original_description):
         # Ensure progress bar is active and tasks are initialized
         if self.progress_bar.progress is not None and len(self.progress_bar.progress.tasks) > 0:
             # Look for the current validation task
