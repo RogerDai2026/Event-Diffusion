@@ -10,7 +10,7 @@ from lightning.pytorch.utilities import rank_zero_only
 import wandb
 from matplotlib import pyplot as plt
 from lightning.pytorch.callbacks import RichProgressBar
-from src.utils.callbacks.generic_wandb_logger import GenericLogger
+from src.utils.callbacks.generic_wandb_logger import GenericLogger, hold_pbar
 from src.utils.helper import cm_
 from src.utils.metrics import calc_mae, calc_bias
 
@@ -47,8 +47,9 @@ class EventLogger(GenericLogger):
     def log_score(self, pl_module: LightningModule, outputs: Dict[str, torch.Tensor]):
         pass # TODO
 
+    @hold_pbar("sampling lol")
     def log_samples(self, trainer: Trainer, pl_module: LightningModule, outputs: Dict[str, torch.Tensor]):
-        pbar_taskid, original_pbar_desc = self._modify_pbar_desc(stage=trainer.state.stage)
+        # pbar_taskid, original_pbar_desc = self._modify_pbar_desc(stage=trainer.state.stage)
 
         condition = outputs['condition']
         batch_dict = outputs['batch_dict']
@@ -91,7 +92,7 @@ class EventLogger(GenericLogger):
         #                    pooling_func='mean')
         # TODO: resize to multiple of 16 not yet compatible
 
-        self._revert_pbar_desc(pbar_taskid, original_pbar_desc)
+        # self._revert_pbar_desc(pbar_taskid, original_pbar_desc)
         return
 
     def log_samples_helper(self, condition, sample, gt, n):

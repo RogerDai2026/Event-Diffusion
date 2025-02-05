@@ -1,6 +1,8 @@
 import os
+import time
+import functools
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable, Tuple
 import torch
 from lightning import LightningModule, Trainer
 from lightning.pytorch.utilities.types import STEP_OUTPUT
@@ -49,12 +51,14 @@ class GenericLogger(Callback, ABC):
         self.progress_bar = None
         self.pbar_type = None
         self.sampling_pbar_desc = 'Sampling on validation set...'
+        self.trainer = None
         self.first_batch_visualized = False
         return
 
     @rank_zero_only
     def on_fit_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
         wandb.run.summary['logdir'] = trainer.default_root_dir
+        self.trainer = trainer
         for callback in trainer.callbacks:
             if isinstance(callback, RichProgressBar):
                 self.progress_bar = callback
@@ -129,39 +133,41 @@ class GenericLogger(Callback, ABC):
         else:
             raise NotImplementedError("Progress bar type not recognized.")
 
-    def _modify_pbar_desc(self, stage: Optional[str] = None):
+    def _modify_pbar_desc(self, desc: Optional[str] = None):
+        stage = self.trainer.state.stage
         if self.pbar_type == "rich":
-            return self._modify_rich_pbar_desc()
+            return stage, self._modify_rich_pbar_desc(desc)
         elif self.pbar_type == "tqdm":
             assert stage is not None, "Stage must be provided for tqdm progress bar."
-            return self._modify_tqdm_pbar_desc(stage)
+            return stage, self._modify_tqdm_pbar_desc(stage, desc)
 
-    def _revert_pbar_desc(self, task_id, original_description):
+    def _revert_pbar_desc(self, stage: Optional[str] = None, progress_info: Optional[Dict] = None):
         if self.pbar_type == "rich":
-            self._revert_rich_pbar_desc(task_id, original_description)
+            self._revert_rich_pbar_desc(progress_info)
         elif self.pbar_type == "tqdm":
-            self._revert_tqdm_pbar_desc(task_id, original_description)
+            self._revert_tqdm_pbar_desc(stage, progress_info)
 
-    def _modify_tqdm_pbar_desc(self, stage: str):
+    def _modify_tqdm_pbar_desc(self, stage: str, override_desc: str):
         # find the current pbar according to the stage
-        if stage == "validation" or stage == "sanity_check":
+        if stage == "validate" or stage == "sanity_check":
             current_pbar = self.progress_bar.val_progress_bar
+        # elif stage == "train":
+        #     current_pbar = self.progress_bar.main_progress_bar
         else:
             raise NotImplementedError()
         original_description = getattr(current_pbar, "desc")
-        current_pbar.set_description(self.sampling_pbar_desc)
-        # self.progress_bar.refresh()
-        return None, original_description
+        current_pbar.set_description(override_desc)
+        return {"original_description": original_description, "task_id": None}
 
-    def _revert_tqdm_pbar_desc(self, stage: str, original_description: str):
-        if stage == "validation" or stage == "sanity_check":
+    def _revert_tqdm_pbar_desc(self, stage: str, progress_info: Optional[Dict] = None):
+        original_description = progress_info.get('original_description')
+        if stage == "validate" or stage == "sanity_check":
             current_pbar = self.progress_bar.val_progress_bar
         else:
-            raise NotImplementedError()
-        self.progress_bar.set_description(original_description)
-        # self.progress_bar.refresh()
+            raise NotImplementedError('Current stage is {}'.format(stage))
+        current_pbar.set_description(original_description)
 
-    def _modify_rich_pbar_desc(self):
+    def _modify_rich_pbar_desc(self, override_desc: str):
         task_id, original_description = None, None
         # Ensure progress bar is active and tasks are initialized
         if self.progress_bar.progress is not None and len(self.progress_bar.progress.tasks) > 0:
@@ -171,11 +177,12 @@ class GenericLogger(Callback, ABC):
                     task_id = task.id
                     original_description = task.description
                     # Update the description of the active validation progress bar
-                    self.progress_bar.progress.update(task_id, description=self.sampling_pbar_desc)
+                    self.progress_bar.progress.update(task_id, description=override_desc)
                     self.progress_bar.progress.refresh()
-        return task_id, original_description
+        return {"original_description": original_description, "task_id": task_id}
 
-    def _revert_rich_pbar_desc(self, task_id, original_description):
+    def _revert_rich_pbar_desc(self, progress_info: Optional[Dict] = None):
+        task_id, original_description = progress_info.get('task_id'), progress_info.get('original_description')
         # Ensure progress bar is active and tasks are initialized
         if self.progress_bar.progress is not None and len(self.progress_bar.progress.tasks) > 0:
             # Look for the current validation task
@@ -205,3 +212,31 @@ class GenericLogger(Callback, ABC):
             save_dir = trainer.logger.save_dir
             ckpt_path = os.path.join(save_dir, 'checkpoints', 'last.ckpt')
             trainer.save_checkpoint(ckpt_path)
+
+
+def hold_pbar(desc: Optional[str] = 'Sampling, of course') -> Callable:
+    """
+    A decorator to update the progress bar description before a long-running
+    sampling function executes, and then revert it afterwards.
+    The wrapped method is assumed to be an instance method, and the instance
+    must implement:
+      - _modify_pbar_desc(stage: Optional[str]) -> Tuple[Any, Any]
+      - _revert_pbar_desc(task_id, original_description) -> None
+    """
+
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs) -> Any:
+            # Update the progress bar description
+            progress_info: Optional[Dict] = None
+            stage: Optional[str] = None
+            try:
+                stage, progress_info = self._modify_pbar_desc(desc=desc)
+                result = func(self, *args, **kwargs) # execute func
+            finally:
+                # Revert the progress bar description regardless of success/failure.
+                if progress_info is not None:
+                    self._revert_pbar_desc(stage, progress_info)
+            return result
+        return wrapper
+    return decorator
