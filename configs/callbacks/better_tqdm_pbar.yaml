@@ -1,0 +1,2 @@
+better_tqdm_pbar:
+  _target_: src.utils.callbacks.better_tqdm_pbar.BetterTQDMProgressBar
