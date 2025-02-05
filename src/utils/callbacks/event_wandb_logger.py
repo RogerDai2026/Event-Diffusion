@@ -17,25 +17,26 @@ from src.utils.metrics import calc_mae, calc_bias
 
 class EventLogger(GenericLogger):
     def __init__(self, train_log_img_freq: int = 1000, train_log_score_freq: int = 1000,
-                 train_log_param_freq: int = 1000, show_samples_at_start: bool = False,
+                 train_ckpt_freq: int = 1000, show_samples_at_start: bool = False,
                  show_unconditional_samples: bool = False, check_freq_via: str = 'global_step',
                  enable_save_ckpt: bool = False, add_reference_artifact: bool = False,
-                 report_sample_metrics: bool = True):
+                 report_sample_metrics: bool = True, sampling_batch_size: int = 6):
         """
         Callback to log images, scores and parameters to wandb.
         :param train_log_img_freq: frequency to log images. Set to -1 to disable
         :param train_log_score_freq: frequency to log scores. Set to -1 to disable
-        :param train_log_param_freq: frequency to log parameters. Set to -1 to disable
+        :param train_ckpt_freq: frequency to log parameters. Set to -1 to disable
         :param show_samples_at_start: whether to log samples at the start of training (likely during sanity check)
         :param show_unconditional_samples: whether to log unconditional samples. Deprecated.
         :param check_freq_via: whether to check frequency via 'global_step' or 'epoch'
         :param enable_save_ckpt: whether to save checkpoint
         :param add_reference_artifact: whether to add the checkpoint as a reference artifact
         :param report_sample_metrics: whether to report sample metrics
+        :param sampling_batch_size: number of samples to visualize
         """
-        super().__init__(train_log_img_freq, train_log_score_freq, train_log_param_freq, show_samples_at_start,
+        super().__init__(train_log_img_freq, train_log_score_freq, train_ckpt_freq, show_samples_at_start,
                          show_unconditional_samples, check_freq_via, enable_save_ckpt, add_reference_artifact,
-                         report_sample_metrics)
+                         report_sample_metrics, sampling_batch_size)
         # to be defined elsewhere
         self.depth_transformer = None
 
@@ -52,8 +53,9 @@ class EventLogger(GenericLogger):
         condition = outputs['condition']
         batch_dict = outputs['batch_dict']
         gt = outputs['batch_dict']['depth_raw_norm']
-        config = pl_module.model_config
-        s = pl_module.model_config.sampling.sampling_batch_size
+        # config = pl_module.model_config
+        # s = pl_module.model_config.sampling.sampling_batch_size
+        s = self.sampling_batch_size
         sample = pl_module.sample(condition[0:s])
 
         condition_grid = make_grid(condition[0:s].detach().cpu(), nrow=s).permute(1, 2, 0)
@@ -84,9 +86,10 @@ class EventLogger(GenericLogger):
         wandb.log({"val/conditional_samples": images})
 
         # report metrics
-        if self.report_sample_metrics:
-            mae = calc_mae(sample_metric.cpu().detach().numpy(), gt[0:s, :, :, :].cpu().detach().numpy(), valid_mask=None, k=1,
-                           pooling_func='mean')
+        # if self.report_sample_metrics:
+        #     mae = calc_mae(sample_metric.cpu().detach().numpy(), gt[0:s, :, :, :].cpu().detach().numpy(), valid_mask=None, k=1,
+        #                    pooling_func='mean')
+        # TODO: resize to multiple of 16 not yet compatible
 
         self._revert_pbar_desc(pbar_taskid, original_pbar_desc)
         return

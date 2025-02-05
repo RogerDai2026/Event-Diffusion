@@ -1,0 +1,30 @@
+# @package _global_
+defaults:
+  - /callbacks/model_checkpoint
+  - override /model: baseline_cnn
+  - _self_
+
+trainer:
+  max_epochs: 1000
+#  check_val_every_n_epoch: 5
+
+data:
+  batch_size: 48
+  num_workers: 48
+
+callbacks:
+  log_event_data:
+    show_samples_at_start: true
+    enable_save_ckpt: false
+    add_reference_artifact: false
+    sampling_batch_size: 8
+  model_checkpoint:
+    dirpath: ${paths.output_dir}/checkpoints
+    filename: "epoch_{epoch:03d}"
+    monitor: "val/loss"
+    mode: "min"
+    save_last: true
+    auto_insert_metric_name: false
+    save_top_k: 10 # save k best models (determined by above metric)
+  #  every_n_train_steps: 5000
+    every_n_epochs: 50

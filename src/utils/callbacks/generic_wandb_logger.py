@@ -11,32 +11,35 @@ from lightning.pytorch.callbacks import RichProgressBar, Callback, ProgressBar
 
 class GenericLogger(Callback, ABC):
     def __init__(self, train_log_img_freq: int = 1000, train_log_score_freq: int = 1000,
-                 train_log_param_freq: int = 1000, show_samples_at_start: bool = False,
+                 train_ckpt_freq: int = 1000, show_samples_at_start: bool = False,
                  show_unconditional_samples: bool = False, check_freq_via: str = 'global_step',
                  enable_save_ckpt: bool = False, add_reference_artifact: bool = False,
-                 report_sample_metrics: bool = True):
+                 report_sample_metrics: bool = True, sampling_batch_size: int = 6):
         """
         Callback to log images, scores and parameters to wandb.
         :param train_log_img_freq: frequency to log images. Set to -1 to disable
         :param train_log_score_freq: frequency to log scores. Set to -1 to disable
-        :param train_log_param_freq: frequency to log parameters. Set to -1 to disable
+        :param train_ckpt_freq: frequency to log parameters. Set to -1 to disable
         :param show_samples_at_start: whether to log samples at the start of training (likely during sanity check)
         :param show_unconditional_samples: whether to log unconditional samples. Deprecated.
         :param check_freq_via: whether to check frequency via 'global_step' or 'epoch'
         :param enable_save_ckpt: whether to save checkpoint
         :param add_reference_artifact: whether to add the checkpoint as a reference artifact
         :param report_sample_metrics: whether to report sample metrics
+        :param sampling_batch_size: number of samples to visualize
         """
         super().__init__()
 
         self.check_freq_via = check_freq_via
         assert self.check_freq_via in ['global_step', 'epoch']
-        self.freqs = {'img': train_log_img_freq, 'score': train_log_score_freq, 'param': train_log_param_freq}
-        self.next_log_idx = {'img': 0 if show_samples_at_start else train_log_img_freq - 1, 'score': 0, 'param': 0}
+        self.freqs = {'img': train_log_img_freq, 'score': train_log_score_freq, 'ckpt': train_ckpt_freq}
+        self.next_log_idx = {'img': 0 if show_samples_at_start else train_log_img_freq - 1,
+                             'score': 0, 'ckpt': train_ckpt_freq - 1}
         self.show_unconditional_samples = show_unconditional_samples
         self.enable_save_ckpt = enable_save_ckpt
         self.add_reference_artifact = add_reference_artifact
         self.report_sample_metrics = report_sample_metrics
+        self.sampling_batch_size = sampling_batch_size
 
         if self.show_unconditional_samples:
             raise NotImplementedError('Unconditional samples not implemented yet.')
@@ -82,6 +85,7 @@ class GenericLogger(Callback, ABC):
                                 batch: Any, batch_idx: int, dataloader_idx: int = 0) -> None:
         if self._check_frequency(trainer, 'img'):
             self.log_samples(trainer, pl_module, outputs)
+        if self._check_frequency(trainer, 'ckpt'):
             self.save_ckpt(trainer)
 
     @abstractmethod

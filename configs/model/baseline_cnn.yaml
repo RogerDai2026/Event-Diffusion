@@ -19,3 +19,4 @@ criterion:
   _target_: torch.nn.MSELoss
 
 compile: false
+allow_resize: true  # if true, resizes data to multiples of 16 to be compatible with UNet

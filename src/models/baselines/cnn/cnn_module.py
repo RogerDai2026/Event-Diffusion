@@ -27,6 +27,8 @@ class CNNLitModule(GenericE2DModule):
             print("Model compiled.")
         elif self.hparams.compile and stage == "test":
             print("Warning: torch_compile is only available during the fit stage.")
+        if self.hparams.allow_resize:
+            yprint("Resizing data to multiples of 16 to be compatible with UNet.")
         return
 
     def configure_optimizers(self) -> Dict[str, Any]:
@@ -45,8 +47,7 @@ class CNNLitModule(GenericE2DModule):
         :return: A tensor of losses between model predictions and targets.
         """
         condition, gt = self._generate_condition(batch)
-        condition = resize_to_multiple_of_16(condition)
-        gt = resize_to_multiple_of_16(gt)
+        condition, gt = self.resize_data(condition, gt)
         prediction = self.forward(condition)
         loss = self.criterion(prediction, gt)
         self.log("train/loss", loss, on_step=True, on_epoch=False, prog_bar=False, batch_size=condition.shape[0])
@@ -61,8 +62,7 @@ class CNNLitModule(GenericE2DModule):
         """
         batch = self._fill_missing_keys(batch)
         condition, gt = self._generate_condition(batch)
-        condition = resize_to_multiple_of_16(condition)
-        gt = resize_to_multiple_of_16(gt)
+        condition, gt = self.resize_data(condition, gt)
         prediction = self.forward(condition)
         eval_loss = self.criterion(prediction, gt)
         self.log("val/loss", eval_loss, on_step=False, on_epoch=True, prog_bar=False,
@@ -76,3 +76,11 @@ class CNNLitModule(GenericE2DModule):
     def sample(self, condition: torch.Tensor) -> torch.Tensor:
         return self.forward(condition)
 
+    def resize_data(self, *args) -> torch.Tensor:
+        """
+        Resizes data to a multiple of 16.
+        """
+        if not self.hparams.allow_resize:
+            return args
+        resized_tensors = tuple(resize_to_multiple_of_16(t) for t in args)
+        return resized_tensors
