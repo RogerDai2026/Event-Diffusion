@@ -8,6 +8,7 @@ data_config:
 #  _target_: src.data.depth.carla_dataset.CarlaDataset
   base_dir: ${local.data_dir}/
   encoding_mode: 'carla_vae_robust'
+  num_input_chs: 3
   train:
     name: carla
     disp_name: carla_train
@@ -27,6 +28,7 @@ data_config:
 
 augmentation_args:
     lr_flip_p: 0.5
+
 depth_transform_args:
   type: reversible_normalization
   clip: true
