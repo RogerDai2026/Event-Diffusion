@@ -9,8 +9,8 @@ trainer:
 #  check_val_every_n_epoch: 5
 
 data:
-  batch_size: 48
-  num_workers: 48
+  batch_size: 24
+  num_workers: 24
 
 callbacks:
   log_event_data:
@@ -19,7 +19,7 @@ callbacks:
     add_reference_artifact: false
     sampling_batch_size: 8
     train_log_img_freq: 50
-    train_ckpt_freq: 100000000
+    train_ckpt_freq: -1
   model_checkpoint:
     dirpath: ${paths.output_dir}/checkpoints
     filename: "epoch_{epoch:03d}"
