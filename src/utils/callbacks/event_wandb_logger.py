@@ -47,7 +47,7 @@ class EventLogger(GenericLogger):
     def log_score(self, pl_module: LightningModule, outputs: Dict[str, torch.Tensor]):
         pass # TODO
 
-    @hold_pbar("sampling lol")
+    @hold_pbar("sampling...")
     def log_samples(self, trainer: Trainer, pl_module: LightningModule, outputs: Dict[str, torch.Tensor]):
         # pbar_taskid, original_pbar_desc = self._modify_pbar_desc(stage=trainer.state.stage)
 
