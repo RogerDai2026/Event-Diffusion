@@ -350,6 +350,11 @@ class EventWassDiffLitModule(LightningModule):
         condition = condition + null_token_mask
         return condition, context_mask
 
+    def set_sampling_batch_size(self, batch_size: int):
+        self.model_config.sampling.sampling_batch_size = batch_size
+        print(f"Sampling batch size set to {batch_size}.")
+        return
+
 
 if __name__ == "__main__":
     # _ = WassDiffLitModule(None, None, None, None)

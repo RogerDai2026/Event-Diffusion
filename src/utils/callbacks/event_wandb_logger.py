@@ -40,6 +40,12 @@ class EventLogger(GenericLogger):
         # to be defined elsewhere
         self.depth_transformer = None
 
+    def setup(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", stage: str) -> None:
+        # set sampling batch size
+        # if pl_module has a fucntion called set_sampling_batch_size, call it
+        if hasattr(pl_module, 'set_sampling_batch_size'):
+            pl_module.set_sampling_batch_size(self.sampling_batch_size)
+
     def on_fit_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
         super().on_fit_start(trainer, pl_module)
         self.depth_transformer = trainer.datamodule.depth_transform

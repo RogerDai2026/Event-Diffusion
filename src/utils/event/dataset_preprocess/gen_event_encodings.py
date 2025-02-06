@@ -14,6 +14,9 @@ rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 TIME_ENCODING = None
 
+def get_new_encoding(times, polarity, x, y, image):
+    pass
+
 def save_event_frames(base_dir, event_dir, save_dir, time_encoding, args):
     height = args.get("height", None)
     width = args.get("width", None)
@@ -120,11 +123,11 @@ def save_from_discrete_event_frames(base_dir, event_dir, save_dir, time_encoding
             image[np.int64(yy[pol == 1]), np.int64(xx[pol == 1]), 0] = (np.ones_like(t))[pol == 1]
         elif (TIME_ENCODING["VAE_ROBUST"] == time_encoding):
             image = event_image
-        else:
+        else: # only verified for linear
             image = np.zeros((height, width, 3))
             # Assign the red channel to the 0 polarity events, and make its blue and green channels zero
             times = times
-            neg_p = polarity.min()
+            neg_p = polarity.min() # either 0 or -1
             image[np.int64(y[polarity == neg_p]), np.int64(x[polarity == neg_p]), 0] = times[polarity == neg_p]
             # Assign the blue channel to the 1 polarity events
             image[np.int64(y[polarity == 1]), np.int64(x[polarity == 1]), 2] = times[polarity == 1]
