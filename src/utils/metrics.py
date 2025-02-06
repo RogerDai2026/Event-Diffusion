@@ -177,6 +177,40 @@ def calc_fss(output: np.ndarray, gt: np.ndarray, threshold: float = 10, k: int =
         return np.nan
     return fss(output, gt, thr=threshold, scale=k)
 
+# new metrics for depth eval
+def calc_abs_rel(output, gt, valid_mask=None, k=1, pooling_func='mean'):
+    """Absolute Relative Error"""
+    output, gt, valid_mask = pooling(output, gt, valid_mask, k=k, func=pooling_func)
+    output, gt = apply_valid_mask(output, gt, valid_mask=valid_mask)
+    eps = 1e-6  # To avoid division by zero
+    return np.mean(np.abs(output - gt) / (gt + eps))
+
+def calc_sq_rel(output, gt, valid_mask=None, k=1, pooling_func='mean'):
+    """Squared Relative Error"""
+    output, gt, valid_mask = pooling(output, gt, valid_mask, k=k, func=pooling_func)
+    output, gt = apply_valid_mask(output, gt, valid_mask=valid_mask)
+    eps = 1e-6
+    return np.mean((output - gt) ** 2 / (gt + eps))
+
+def calc_rmse_log(output, gt, valid_mask=None, k=1, pooling_func='mean'):
+    """RMSE in Log Space"""
+    output, gt, valid_mask = pooling(output, gt, valid_mask, k=k, func=pooling_func)
+    output, gt = apply_valid_mask(output, gt, valid_mask=valid_mask)
+    eps = 1e-6  # Ensure positive values for log
+    output = np.log(np.clip(output, eps, None))
+    gt = np.log(np.clip(gt, eps, None))
+    return np.sqrt(np.mean((output - gt) ** 2))
+
+def calc_delta_acc(output, gt, delta=1.25, valid_mask=None, k=1, pooling_func='mean'):
+    """Thresholded Accuracy (δ)"""
+    output, gt, valid_mask = pooling(output, gt, valid_mask, k=k, func=pooling_func)
+    output, gt = apply_valid_mask(output, gt, valid_mask=valid_mask)
+    eps = 1e-6
+    ratio = output / (gt + eps)
+    ratio_inv = (gt + eps) / output
+    max_ratio = np.maximum(ratio, ratio_inv)
+    return np.mean(max_ratio < delta)
+
 
 def numpy_to_tensor(images, divide_img_by_c: float = 1.0):
     images = torch.from_numpy(images.copy()).float()
