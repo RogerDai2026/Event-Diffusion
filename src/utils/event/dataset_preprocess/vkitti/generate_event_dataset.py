@@ -34,6 +34,7 @@ TIME_ENCODING = {
     "POSITIONAL": 2,
     "PYRAMIDAL": 3,
     "VAE_ROBUST": 4,
+    "INTER_FRAME_LINEAR": 5,
 }
 
 def normalize(x, relative_vmin=None, relative_vmax=None, interval_vmax=None):
