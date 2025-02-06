@@ -58,6 +58,7 @@ class EventDataModule(LightningDataModule):
         self.depth_transform = None
         self.train_dataset = None
         self.val_dataset = None
+        self.test_dataset = None
         self.train_loader = None
         self.val_loader = None
         return
@@ -76,8 +77,14 @@ class EventDataModule(LightningDataModule):
                                         base_data_dir=self.data_config.base_dir,
                                         mode=DatasetMode.EVAL,
                                         depth_transform=self.depth_transform)
+        self.print_dataset_stats()
 
-
+    def print_dataset_stats(self):
+        print('-------------- Dataset Statistics --------------------')
+        print(f"Train dataset size: {len(self.train_dataset)}")
+        print(f"Validation dataset size: {len(self.val_dataset)}")
+        print(f"Test dataset size: {len(self.test_dataset) if self.test_dataset is not None else 0}")
+        print('------------------------------------------------------')
 
     def train_dataloader(self) -> TRAIN_DATALOADERS:
         if self.data_config.train.name == 'mixed':
