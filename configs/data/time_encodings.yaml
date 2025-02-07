@@ -4,4 +4,6 @@ TIME_ENCODING:
   POSITIONAL: 2,
   PYRAMIDAL: 3,
   VAE_ROBUST: 4, # aniket
-  NEW_ENCODING: 5, # yuhao
+  N_BINS_5: 5, # yuhao
+  LATEST_ARRIVAL_3: 6, # yuhao
+  COUNT_N_LATEST_3: 7, # yuhao

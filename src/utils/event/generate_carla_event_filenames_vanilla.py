@@ -5,12 +5,13 @@ from tqdm import tqdm
 
 # Define the root directory where the search should begin
 # the starting directory
-root_dir = "/shared/ad150/event3d/carla/"
+# root_dir = "/shared/ad150/event3d/carla/"
+root_dir = "/shared/yl241/data/event3d/carla/"
 # directory where the text files should be saved
-text_file_dir = "./data_split/carla/"
+text_file_dir = "./data_split/carla_nbins_5/"
 # keyword to search for in the directory names
 keyword = "val"  # "train" or "val" or "vis_sample"
-# encoding = "VAE_ROBUST" # "LINEAR" or "PYRAMIDAL" pr "VAE_ROBUST"
+encoding = "N_BINS_5" # "LINEAR" or "PYRAMIDAL" pr "VAE_ROBUST"
 
 output_file = os.path.join(text_file_dir, f"carla_{keyword}.txt")
 output_file_small = os.path.join(text_file_dir, f"carla_{keyword}_small.txt")
@@ -31,7 +32,8 @@ print(f"Directories with {keyword}' in their names, total of {len(train_dirs)}")
 for dir_path in tqdm(train_dirs, total=len(train_dirs)):
     print(dir_path)
     # get all the event files in the directory
-    event_files = glob.glob(os.path.join(dir_path, "events/frames/", "**", "*.png"), recursive=True)
+    # event_files = glob.glob(os.path.join(dir_path, "events/frames/", "**", "*.png"), recursive=True)
+    event_files = glob.glob(os.path.join(dir_path, "events/frames_event/", encoding, "*.tif"), recursive=True)
     # print the filenames of the event files in a text file
     # append the filenames to the text file
     with open(output_file, "a") as file, open(output_file_small, "a") as file_small:

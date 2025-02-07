@@ -13,15 +13,16 @@
 
 
 # Define the super directory where all scenes are located
-super_dir="/shared/ad150/event3d/carla/"
+# super_dir="/shared/ad150/event3d/carla/"
+super_dir="/shared/yl241/data/event3d/carla/"
 
 # Loop through each frames directory found within the super directory
 find "$super_dir" -type d -name "events" | while read -r base_dir; do
 
     # Define event_dir relative to base_dir
-    event_dir="data/"
+    event_dir="data"
     # Define save_dir based on the base_dir path
-    save_dir="${base_dir}/${event_dir}/../frames_event/"
+    save_dir="${base_dir}/frames_event/"
 
     # Define the path to the required events.txt file
     events_file="${base_dir}/${event_dir}/boundary_timestamps.txt"
@@ -32,12 +33,11 @@ find "$super_dir" -type d -name "events" | while read -r base_dir; do
     fi
 
     # # Run the Python script with these parameters
-    python script/dataset_preprocess/vkitti/generate_event_dataset.py \
-        --base_dir "$base_dir" \
-        --event_dir "$event_dir" \
-        --save_dir "$save_dir" \
-        --npy \
-        --time_encoding "VAE_ROBUST" \
+    python ./src/utils/event/dataset_preprocess/gen_event_encodings.py \
+        base_dir="$base_dir" \
+        event_dir="$event_dir" \
+        save_dir="$save_dir" \
+#        time_encoding="what_the_heck" \
 
     echo "save_dir: $save_dir"
 

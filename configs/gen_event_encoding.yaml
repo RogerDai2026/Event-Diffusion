@@ -15,7 +15,7 @@ event_dir: data/ # Town01_train/events/data/NEW_ENCODING
 npy: true # whether the events are in npy format
 height: null # height of the output image
 width: null # width of the output image
-time_encoding: NEW_ENCODING # Time encoding to use for the events
+time_encoding: N_BINS_5 # Time encoding to use for the events
 vmin: null # 0 # minimum value to keep in the event set
 vmax: null # 0.04 # maximum value to keep in the event set
 interval_vmax: null # 0.04 # interval time to normalize the time to

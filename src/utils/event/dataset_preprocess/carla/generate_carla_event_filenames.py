@@ -7,12 +7,13 @@ from tqdm import tqdm
 
 # Define the root directory where the search should begin
 # the starting directory
-root_dir = "/shared/ad150/event3d/carla/"
+# root_dir = "/shared/ad150/event3d/carla/"
+root_dir = "/shared/yl241/data/event3d/carla/"
 # directory where the text files should be saved
-text_file_dir = "data_split/carla/"
+text_file_dir = "data_split/carla_nbins_5/"
 # keyword to search for in the directory names
 keyword = "val"  # "train" or "val" or "vis_sample"
-encoding = "VAE_ROBUST" # "LINEAR" or "PYRAMIDAL" pr "VAE_ROBUST"
+encoding = "NBINS_5" # "LINEAR" or "PYRAMIDAL" pr "VAE_ROBUST"
 
 output_file = os.path.join(text_file_dir, f"carla_{keyword}.txt")
 output_file_small = os.path.join(text_file_dir, f"carla_{keyword}_small.txt")

@@ -21,7 +21,7 @@ data_config:
     name: carla
     disp_name: carla_val
     dir: ${local.data_dir}/carla/
-    filenames: ./data_split/${..encoding_mode}/carla_val_single.txt  # TODO: change to carla_val.txt
+    filenames: ./data_split/${..encoding_mode}/carla_val.txt  # TODO: change to carla_val.txt
     resize_to_hw:
       - 256
       - 344
