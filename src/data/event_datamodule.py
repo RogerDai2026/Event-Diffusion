@@ -72,11 +72,13 @@ class EventDataModule(LightningDataModule):
                                          base_data_dir= self.data_config.base_dir,
                                          mode=DatasetMode.TRAIN,
                                          augmentation_args=self.hparams.augmentation_args,
-                                         depth_transform=self.depth_transform)
+                                         depth_transform=self.depth_transform,
+                                         io_args=self.data_config.io_args)
         self.val_dataset = get_dataset(self.data_config.val,
-                                        base_data_dir=self.data_config.base_dir,
-                                        mode=DatasetMode.EVAL,
-                                        depth_transform=self.depth_transform)
+                                       base_data_dir=self.data_config.base_dir,
+                                       mode=DatasetMode.EVAL,
+                                       depth_transform=self.depth_transform,
+                                       io_args=self.data_config.io_args)
         self.print_dataset_stats()
 
     def print_dataset_stats(self):

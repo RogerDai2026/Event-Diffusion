@@ -5,4 +5,5 @@ defaults:
 data_config:
     encoding_mode: carla_nbins_5
     num_input_chs: 5
-
+    io_args:
+      read_event_via: 'tifffile'

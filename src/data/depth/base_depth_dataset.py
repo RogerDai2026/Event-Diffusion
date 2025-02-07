@@ -20,6 +20,7 @@
 # More information about the method can be found at https://marigoldmonodepth.github.io
 # --------------------------------------------------------------------------
 
+from typing import Optional
 import io
 import os
 import random
@@ -72,6 +73,7 @@ class BaseDepthDataset(Dataset):
         resize_to_hw=None,
         move_invalid_to_far_plane: bool = True,
         rgb_transform=lambda x: x / 255.0 * 2 - 1,  #  [0, 255] -> [-1, 1],
+        io_args: Optional[dict] = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -94,6 +96,9 @@ class BaseDepthDataset(Dataset):
         self.resize_to_hw = resize_to_hw
         self.rgb_transform = rgb_transform
         self.move_invalid_to_far_plane = move_invalid_to_far_plane
+
+        # additional arguments
+        self.read_event_via = io_args['read_event_via']
 
         # Load filenames
         with open(self.filename_ls_path, "r") as f:
@@ -192,24 +197,6 @@ class BaseDepthDataset(Dataset):
             filled_rel_path = filename_line[2]
         return rgb_rel_path, depth_rel_path, filled_rel_path
 
-    # def _read_image(self, img_rel_path) -> np.ndarray:
-    #     if self.is_tar:
-    #         if self.tar_obj is None:
-    #             self.tar_obj = tarfile.open(self.dataset_dir)
-    #         image_to_read = self.tar_obj.extractfile("./" + img_rel_path)
-    #         image_to_read = image_to_read.read()
-    #         image_to_read = io.BytesIO(image_to_read)
-    #     else:
-    #         image_to_read = os.path.join(self.dataset_dir, img_rel_path)
-    #     image = Image.open(image_to_read)  # [H, W, rgb]
-    #     image = np.asarray(image)
-    #     # TODO: CHANGED! Maybe there's a better way to do this?
-    #     # If the image h and w are not divisible by 8, crop the image
-    #     factor = 8
-    #     if image.shape[0] % factor != 0 or image.shape[1] % factor != 0:
-    #         image = image[: image.shape[0] // factor * factor, : image.shape[1] // factor * factor]
-    #     return image
-
     def _read_image(self, img_rel_path) -> np.ndarray:
         if self.is_tar:
             if self.tar_obj is None:
@@ -219,8 +206,14 @@ class BaseDepthDataset(Dataset):
             image_to_read = io.BytesIO(image_to_read)
         else:
             image_to_read = os.path.join(self.dataset_dir, img_rel_path)
-        image = tifffile.imread(image_to_read)
-        image = np.transpose(image, (1, 2, 0))
+        if self.read_event_via == 'default':
+            image = Image.open(image_to_read)  # [H, W, rgb]
+            image = np.asarray(image)
+        elif self.read_event_via == 'tifffile': # for more than 3 channels
+            image = tifffile.imread(image_to_read) # [N, H, W]
+            image = np.transpose(image, (1, 2, 0)) # [H, W, N]
+        else:
+            raise NotImplementedError(f"Reading via {self.read_event_via} is not implemented.")
         # TODO: CHANGED! Maybe there's a better way to do this?
         # If the image h and w are not divisible by 8, crop the image
         factor = 8

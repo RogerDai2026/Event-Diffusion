@@ -118,7 +118,6 @@ def save_from_discrete_event_frames(base_dir, event_dir, save_dir, time_encoding
             raise ValueError(f"Invalid time encoding: {time_encoding}")
 
         # save image
-        # encoded_img = np.int8(encoded_img)
         encoded_img = np.uint8(encoded_img)
         savename = os.path.join(save_dir, f"event_frame_{npy_counter:04d}.tif")
         npy_counter += 1
