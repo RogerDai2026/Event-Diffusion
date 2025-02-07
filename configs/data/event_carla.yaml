@@ -7,7 +7,7 @@ seed: 42
 data_config:
 #  _target_: src.data.depth.carla_dataset.CarlaDataset
   base_dir: ${local.data_dir}/
-  encoding_mode: carla
+  encoding_mode: carla_linear
   num_input_chs: 3
   train:
     name: carla
