@@ -54,8 +54,8 @@ model_config:
   data:
     image_size: 256 # [256, 344]
     condition_mode: 3 # ${data.data_config.condition_mode}
-    num_channels: 1
-    num_context_chs: 3
+    num_channels: 1 # output channels
+    num_context_chs: ${data.data_config.num_input_chs} # conditional channels
 #    condition_size: ${data.data_config.condition_size}
     centered: false
     precip_rescale_c: 1

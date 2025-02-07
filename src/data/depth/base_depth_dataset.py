@@ -26,13 +26,12 @@ import random
 import tarfile
 from enum import Enum
 from typing import Union
-
 import numpy as np
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.transforms import InterpolationMode, Resize
-
+import tifffile # added
 from src.utils.event.depth_transform import DepthNormalizerBase
 
 
@@ -193,6 +192,24 @@ class BaseDepthDataset(Dataset):
             filled_rel_path = filename_line[2]
         return rgb_rel_path, depth_rel_path, filled_rel_path
 
+    # def _read_image(self, img_rel_path) -> np.ndarray:
+    #     if self.is_tar:
+    #         if self.tar_obj is None:
+    #             self.tar_obj = tarfile.open(self.dataset_dir)
+    #         image_to_read = self.tar_obj.extractfile("./" + img_rel_path)
+    #         image_to_read = image_to_read.read()
+    #         image_to_read = io.BytesIO(image_to_read)
+    #     else:
+    #         image_to_read = os.path.join(self.dataset_dir, img_rel_path)
+    #     image = Image.open(image_to_read)  # [H, W, rgb]
+    #     image = np.asarray(image)
+    #     # TODO: CHANGED! Maybe there's a better way to do this?
+    #     # If the image h and w are not divisible by 8, crop the image
+    #     factor = 8
+    #     if image.shape[0] % factor != 0 or image.shape[1] % factor != 0:
+    #         image = image[: image.shape[0] // factor * factor, : image.shape[1] // factor * factor]
+    #     return image
+
     def _read_image(self, img_rel_path) -> np.ndarray:
         if self.is_tar:
             if self.tar_obj is None:
@@ -202,8 +219,8 @@ class BaseDepthDataset(Dataset):
             image_to_read = io.BytesIO(image_to_read)
         else:
             image_to_read = os.path.join(self.dataset_dir, img_rel_path)
-        image = Image.open(image_to_read)  # [H, W, rgb]
-        image = np.asarray(image)
+        image = tifffile.imread(image_to_read)
+        image = np.transpose(image, (1, 2, 0))
         # TODO: CHANGED! Maybe there's a better way to do this?
         # If the image h and w are not divisible by 8, crop the image
         factor = 8
