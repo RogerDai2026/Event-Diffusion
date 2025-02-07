@@ -22,10 +22,12 @@ def nbin_encoding(times: ndarray, polarity: ndarray, x: ndarray, y: ndarray, arg
     x = x.astype(np.int64)
     y = y.astype(np.int64)
     normalized_time = normalize(times)
-    encoded_image = np.zeros((nbin, args.height, args.width), dtype=np.int8)
+    polarity[polarity == 1] = 255
+    polarity[polarity == -1] = 0
+    encoded_image = np.ones((nbin, args.height, args.width), dtype=np.int8) * 128
     time_bin = np.minimum((normalized_time * nbin).astype(int), nbin - 1)
     for b in range(nbin):
-        cur_frame = np.zeros((args.height, args.width), dtype=np.int8)
+        cur_frame = np.ones((args.height, args.width), dtype=np.int8) * 128
         mask = (time_bin == b)
         cur_frame[y[mask], x[mask]] = polarity[mask]
         encoded_image[b] = cur_frame
@@ -116,7 +118,8 @@ def save_from_discrete_event_frames(base_dir, event_dir, save_dir, time_encoding
             raise ValueError(f"Invalid time encoding: {time_encoding}")
 
         # save image
-        encoded_img = np.int8(encoded_img)
+        # encoded_img = np.int8(encoded_img)
+        encoded_img = np.uint8(encoded_img)
         savename = os.path.join(save_dir, f"event_frame_{npy_counter:04d}.tif")
         npy_counter += 1
         io.imwrite(savename, encoded_img)

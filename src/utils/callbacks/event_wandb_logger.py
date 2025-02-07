@@ -66,6 +66,8 @@ class EventLogger(GenericLogger):
         sample = pl_module.sample(condition[0:s])
 
         condition_grid = make_grid(condition[0:s].detach().cpu(), nrow=s).permute(1, 2, 0)
+        # only display 1st 3 channels
+        condition_grid = condition_grid[:, :, 0:3]
 
         sample_metric = self.depth_transformer.denormalize(sample)
         sample_vis = map_depth_for_vis(sample_metric, amin=5, amax=25000)
@@ -127,6 +129,9 @@ class EventLogger(GenericLogger):
                 continue
             grid = make_grid(v[0:n, :, :, :])
             grid_mono = grid[0, :, :].unsqueeze(0)
+            # only display 1st 3 channels
+            if grid.shape[0] > 3:
+                grid = grid[:3, :, :]
             if 'depth_raw_norm' == k:
                 grid_mono = self.depth_transformer.denormalize(grid_mono)
             if 'depth' in k:

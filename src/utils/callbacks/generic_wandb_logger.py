@@ -74,7 +74,6 @@ class GenericLogger(Callback, ABC):
     def on_train_batch_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", batch: Any,
                              batch_idx: int) -> None:
         # visualize the first batch in logger
-        # batch, _ = batch  # discard coordinates
         if not self.first_batch_visualized:
             self.visualize_batch(**batch)
             self.first_batch_visualized = True
