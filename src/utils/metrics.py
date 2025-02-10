@@ -192,6 +192,15 @@ def calc_sq_rel(output, gt, valid_mask=None, k=1, pooling_func='mean'):
     eps = 1e-6
     return np.mean((output - gt) ** 2 / (gt + eps))
 
+def calc_rmse(output, gt, valid_mask=None, k=1, pooling_func='mean'):
+    """RMSE"""
+    output, gt, valid_mask = pooling(output, gt, valid_mask, k=k, func=pooling_func)
+    output, gt = apply_valid_mask(output, gt, valid_mask=valid_mask)
+    eps = 1e-6  # Ensure positive values for log
+    output = np.clip(output, eps, None)
+    gt = np.clip(gt, eps, None)
+    return np.sqrt(np.mean((output - gt) ** 2))
+
 def calc_rmse_log(output, gt, valid_mask=None, k=1, pooling_func='mean'):
     """RMSE in Log Space"""
     output, gt, valid_mask = pooling(output, gt, valid_mask, k=k, func=pooling_func)

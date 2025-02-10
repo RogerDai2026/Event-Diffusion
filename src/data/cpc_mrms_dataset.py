@@ -137,6 +137,7 @@ class DailyAggregateRainfallDataset(Dataset):
 
         # define normalization functions
         self.precip_norm_func = data_config.precip_norm_func
+        #define self.inverse_normalize_precip
         self.normalize_precip, self.inverse_normalize_precip = self.define_precip_normalization_func(self.precip_norm_func)
         # define constants
         # self.xmin, self.xmax = 0, 2326.7  # empirically acquired, raw min/max pixel values from dataset
@@ -646,7 +647,7 @@ class DailyAggregateRainfallDataset(Dataset):
             # arr[arr < 0.] = 0.
             batch[k] = arr
         return batch
-
+#define all kinds of normailiztion here
     def define_precip_normalization_func(self, func_name: str):
         if func_name == 'linear':
             print('Using linear normalization for precipitation')
