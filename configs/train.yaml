@@ -4,8 +4,8 @@
 # order of defaults determines the order in which configs override each other
 defaults:
   - _self_
-  - data: cpc_mrms_data
-  - model: wassdiff
+  - data: event_carla
+  - model: event_wassdiff
   - callbacks: default
   - logger: wandb # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
   - trainer: gpu
@@ -43,8 +43,9 @@ train: True
 test: false
 
 # simply provide checkpoint path to resume training
-#ckpt_path: /home/yl241/models/NCSNPP/wandb/run-20240503_110757-gvq9r51l/checkpoints/checkpoint_21.pth
 ckpt_path: null
 
 # seed for random number generators in pytorch, numpy and python.random
 seed: null
+
+set_float32_matmul_precision: null # PyTorch Low-precision Matrix Multiplication, [highest, high, medium]

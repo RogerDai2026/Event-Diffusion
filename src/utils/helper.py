@@ -277,31 +277,31 @@ def hash_(str_=None, bits=4):
         return hashcode
 
 
-def visualize_batch(**kwargs):
-    vis_param = {
-        'surf_temp': 'viridis',
-        'elevation': 'viridis',
-        'vflux_e': 'RdBu',
-        'vflux_n': 'RdBu',
-        'wind_u': 'RdBu',
-        'wind_v': 'RdBu',
-        'precip_lr': 'magma',
-        'precip_up': 'magma',
-        'precip_gt': 'magma',
-        'precip_hr': 'magma',
-        'precip_masked': 'magma',
-        'mask': 'binary',
-        'density': 'viridis',
-    }
-    n = 5
-    for k, v in kwargs.items():
-        grid = make_grid(v[0:n, :, :, :])
-        grid_mono = grid[0, :, :].unsqueeze(0)
-        if 'precip' not in k:
-            grid_mono /= grid_mono.max()
-        cm_grid = cm_(grid_mono.detach().cpu(), vis_param[k])
-        images = wandb.Image(cm_grid, caption=k)
-        wandb.log({f"dataloader/{k}": images})
+# def visualize_batch(**kwargs):
+#     vis_param = {
+#         'surf_temp': 'viridis',
+#         'elevation': 'viridis',
+#         'vflux_e': 'RdBu',
+#         'vflux_n': 'RdBu',
+#         'wind_u': 'RdBu',
+#         'wind_v': 'RdBu',
+#         'precip_lr': 'magma',
+#         'precip_up': 'magma',
+#         'precip_gt': 'magma',
+#         'precip_hr': 'magma',
+#         'precip_masked': 'magma',
+#         'mask': 'binary',
+#         'density': 'viridis',
+#     }
+#     n = 5
+#     for k, v in kwargs.items():
+#         grid = make_grid(v[0:n, :, :, :])
+#         grid_mono = grid[0, :, :].unsqueeze(0)
+#         if 'precip' not in k:
+#             grid_mono /= grid_mono.max()
+#         cm_grid = cm_(grid_mono.detach().cpu(), vis_param[k])
+#         images = wandb.Image(cm_grid, caption=k)
+#         wandb.log({f"dataloader/{k}": images})
 
 
 def visualize_batch_aggregate(**kwargs):
@@ -532,3 +532,6 @@ def squeeze_batch(batch: Dict[str, torch.Tensor], dim: Union[int, Tuple]) -> Dic
 if __name__ == '__main__':
     a = torch.ones(1, 1, 128, 128)
     b = torch.ones(1, 1, 128, 128)
+
+#
+##

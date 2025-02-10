@@ -1,0 +1,1 @@
+outdoor_day1_val/encoded_full/VAE_ROBUST/left/event_frame_00004.tif outdoor_day1_val/depth/data/depth_0000000004.npy

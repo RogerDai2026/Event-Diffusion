@@ -102,14 +102,8 @@ class SDE(abc.ABC):
       def discretize(self, x, t, c, w, null_cond):
         """Create discretized iteration rules for the reverse diffusion sampler."""
         f, G = discretize_fn(x, t)
-        # line below is modified from original. x must be float32 in the forward pass of ncsnpp
-        grad_cond = score_fn(x, t, c)
-        grad_uncond = score_fn(x, t, null_cond)
-        grad = (1 + w) * grad_cond - w * grad_uncond
+        grad = score_fn(x, t, c) # conditioned
         rev_f = f - G[:, None, None, None] ** 2 * grad * (0.5 if self.probability_flow else 1.)
-        # rev_f = f - G[:, None, None, None] ** 2 * score_fn(x, t, c) * (0.5 if self.probability_flow else 1.)
-        # rev_f = f - G[:, None, None, None] ** 2 * score_fn(torch.tensor(x, dtype=torch.float32), t) * (
-        #   0.5 if self.probability_flow else 1.)
         rev_G = torch.zeros_like(G) if self.probability_flow else G
         return rev_f, rev_G
 

@@ -1,0 +1,4 @@
+outdoor_day1/outdoor_day1_data/encoded_full/VAE_ROBUST/left/event_frame_01234.tif mvsec_outdoor_day1/depth/data/depth_0000001234.npy (val)
+outdoor_day1/outdoor_day1_data/encoded_full/VAE_ROBUST/left/event_frame_02024.tif mvsec_outdoor_day1/depth/data/depth_0000002024.npy (val)
+outdoor_day1/outdoor_day1_data/encoded_full/VAE_ROBUST/left/event_frame_03741.tif mvsec_outdoor_day1/depth/data/depth_0000003741.npy (val)
+outdoor_day1/outdoor_day1_data/encoded_full/VAE_ROBUST/left/event_frame_04040.tif mvsec_outdoor_day1/depth/data/depth_0000004040.npy (val)
