@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 from lightning.pytorch.callbacks import RichProgressBar
 from src.utils.callbacks.generic_wandb_logger import GenericLogger, hold_pbar
 from src.utils.helper import cm_
-from src.utils.metrics import calc_mae, calc_bias
+from src.utils.metrics import calc_mae, calc_bias, calc_rmse, calc_abs_rel, calc_sq_rel, calc_rmse_log, calc_delta_acc
 
 
 class EventLogger(GenericLogger):
@@ -39,12 +39,15 @@ class EventLogger(GenericLogger):
                          report_sample_metrics, sampling_batch_size)
         # to be defined elsewhere
         self.depth_transformer = None
+        self.resized_by_model = None
 
     def setup(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", stage: str) -> None:
         # set sampling batch size
         # if pl_module has a fucntion called set_sampling_batch_size, call it
         if hasattr(pl_module, 'set_sampling_batch_size'):
             pl_module.set_sampling_batch_size(self.sampling_batch_size)
+        if hasattr(pl_module.hparams, 'allow_resize'):
+            self.resized_by_model = True
 
     def on_fit_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
         super().on_fit_start(trainer, pl_module)
@@ -95,12 +98,25 @@ class EventLogger(GenericLogger):
         wandb.log({"val/conditional_samples": images})
 
         # report metrics
-        # if self.report_sample_metrics:
-        #     mae = calc_mae(sample_metric.cpu().detach().numpy(), gt[0:s, :, :, :].cpu().detach().numpy(), valid_mask=None, k=1,
-        #                    pooling_func='mean')
-        # TODO: resize to multiple of 16 not yet compatible
-
-        # self._revert_pbar_desc(pbar_taskid, original_pbar_desc)
+        if self.report_sample_metrics:
+            if self.resized_by_model:
+                sample_metric_resized = F.interpolate(sample_metric, size=(gt_metric.shape[-2], gt_metric.shape[-1]),
+                                                      mode='bilinear', align_corners=False)
+            else:
+                sample_metric_resized = sample_metric
+            out_, gt_ = sample_metric_resized.cpu().detach().numpy(), gt_metric[0:s, :, :, :].cpu().detach().numpy()
+            # calc metrics
+            row = {'val_sample/mae': calc_mae(out_, gt_, k=1, pooling_func='mean'),
+                   'val_sample/abs_rel': calc_abs_rel(out_, gt_, k=1, pooling_func='mean'),
+                   'val_sample/sq_rel': calc_sq_rel(out_, gt_, k=1, pooling_func='mean'),
+                   'val_sample/_rmse_log': calc_rmse_log(out_, gt_, k=1, pooling_func='mean'),
+                   'val_sample/delta_1.25': calc_delta_acc(out_, gt_, delta=1.25, k=1, pooling_func='mean'),
+                   'val_sample/delta_1.25^2': calc_delta_acc(out_, gt_, delta=1.25 ** 2, k=1, pooling_func='mean'),
+                   'val_sample/delta_1.25^3': calc_delta_acc(out_, gt_, delta=1.25 ** 3, k=1, pooling_func='mean'),
+                   'val/sample_epoch': trainer.current_epoch,
+                   }
+            # wandb.log({'val/sample_mae': mae, 'val/sample_bias': bias, 'epoch': trainer.current_epoch})
+            wandb.log(row)
         return
 
     def log_samples_helper(self, condition, sample, gt, n):
