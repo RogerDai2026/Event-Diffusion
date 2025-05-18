@@ -1,15 +1,18 @@
-```markdown
+````markdown
 # Monocular Depth Estimation Using Residual Diffusion
 
 ## 🚀 Overview
 
-This repository implements a two-stage **monocular depth estimation** pipeline based on **residual diffusion modeling**, inspired by NVIDIA’s CorrDiff framework:
+This repository implements a two-stage **monocular depth estimation** pipeline based on **residual diffusion modeling**, inspired by
+NVIDIA’s CorrDiff framework:
 
 1. **Regression UNet**  
-   A high-capacity U-Net backbone (`SongUNet` / `SongUNetPosEmbd`) is trained with a simple ℓ₂ (MSE) loss to predict the **conditional mean** depth map from an event-based input.
+   A high-capacity U-Net backbone (`SongUNet` / `SongUNetPosEmbd`) is trained with a simple ℓ₂ (MSE) loss to predict the **conditional
+   mean** depth map from an event-based input.
 
 2. **Residual Diffusion UNet**  
-   A second diffusion-based U-Net learns to model the **residual** (fine-scale detail and uncertainty) on top of the regression mean. The two outputs are summed at inference time to produce sharper, more realistic depth estimates.
+   A second diffusion-based U-Net learns to model the **residual** (fine-scale detail and uncertainty) on top of the regression mean.
+   The two outputs are summed at inference time to produce sharper, more realistic depth estimates.
 
 ---
 
@@ -25,33 +28,32 @@ Classic monocular depth estimation often struggles with fine details and uncerta
 
 ## 🏗️ Project Structure
 
-```
-
+```text
 .
 ├── configs/
-│   ├── baseline\_regression.yaml       # Regression-only training
-│   └── baseline\_diffusion.yaml        # Two-stage CorrDiff training
+│   ├── baseline_regression.yaml    # Regression-only training
+│   └── baseline_diffusion.yaml     # Two-stage CorrDiff training
 ├── src/
 │   ├── models/
-│   │   └── corrdiff\_unet.py           # LightningModules for regression & diffusion
+│   │   └── corrdiff_unet.py        # LightningModules for regression & diffusion
 │   ├── utils/
-│   │   ├── corr\_diff\_utils/           # ResLoss, inference helpers
-│   │   └── callbacks/                 # WandB logging, sample visualization
-│   └── train.py                       # Entry point for training & resuming
-├── data/                              # Dataloaders & example datasets
-└── README.md                          # This file
-
+│   │   ├── corr_diff_utils/        # ResLoss, inference helpers
+│   │   └── callbacks/              # WandB logging, sample visualization
+│   └── train.py                    # Entry point for training & resuming
+├── data/                           # Dataloaders & example datasets
+└── README.md                       # This file
 ````
 
 ---
 
 ## ⚙️ Installation
 
-1. **Clone the repo**  
+1. **Clone the repo**
+
    ```bash
    git clone https://github.com/your-org/monocular-depth-residual-diffusion.git
    cd monocular-depth-residual-diffusion
-````
+   ```
 
 2. **Create a conda environment**
 
