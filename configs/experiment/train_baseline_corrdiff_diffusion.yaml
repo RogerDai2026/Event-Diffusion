@@ -1,0 +1,67 @@
+
+# @package _global_
+defaults:
+  - override /model: baseline_cordiff_diffusion
+  - _self_
+
+# -------------------------------------------------------------------
+# Data loader & shapes
+# -------------------------------------------------------------------
+data:
+  data_config:
+    num_input_chs: 3
+    condition_mode: event
+    image_size: [256, 344]
+    condition_size: [256, 344]
+    centered: false
+  batch_size: 6
+  num_workers: 8
+
+model:
+  regression_net_ckpt: /scratch/shared/models/Event-WassDiff/2025-05-14_23-00-55/checkpoints/last.ckpt
+  img_resolution: [256, 344]
+  img_in_channels: ${data.data_config.num_input_chs}
+  img_out_channels: 1
+  img_channels: 1  # output channels for depth
+  embedding_type: "zero"
+  checkpoint_level: 0
+  use_fp16: false
+# -------------------------------------------------------------------
+# Trainer & precision
+# -------------------------------------------------------------------
+trainer:
+  max_epochs: 50
+  precision: 16                   # AMP mixed‐precision
+
+# -------------------------------------------------------------------
+# WandB logger
+# -------------------------------------------------------------------
+logger:
+  wandb:
+    project: "Event‑WassDiff"
+    name: "CorrDiff‑diffusion"
+
+# -------------------------------------------------------------------
+# Callbacks: image + metric logging, plus checkpointing
+# -------------------------------------------------------------------
+callbacks:
+  log_event_data:
+    _target_: src.utils.callbacks.event_wandb_logger.EventLogger
+    train_log_img_freq: 10        # log sample images every 10 epochs
+    train_log_score_freq: 100     # log sample‐metrics every 100 steps
+    train_ckpt_freq: -1           # disable internal ckpt
+    show_samples_at_start: false
+    sampling_batch_size: 2
+    enable_save_ckpt: false
+    add_reference_artifact: true
+
+  model_checkpoint:
+    _target_: lightning.pytorch.callbacks.ModelCheckpoint
+    dirpath: ${paths.output_dir}/checkpoints
+    filename: "epoch_{epoch:03d}"
+    monitor: "val/loss"
+    mode: "min"
+    save_last: true
+    auto_insert_metric_name: false
+    save_top_k: 5
+    every_n_epochs: 50

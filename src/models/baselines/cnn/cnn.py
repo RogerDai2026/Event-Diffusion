@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 class SEVIRUNet(nn.Module):
 
-    def __init__(self, in_channels: int, out_channels: int, start_filters: int = 32):
+    def __init__(self, in_channels: int, out_channels: int, start_filters: int = 64):
         super(SEVIRUNet, self).__init__()
         self.start_filters = start_filters
         self.in_channels = in_channels

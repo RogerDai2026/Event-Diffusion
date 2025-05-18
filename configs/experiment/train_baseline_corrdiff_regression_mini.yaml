@@ -1,0 +1,39 @@
+# @package _global_
+
+defaults:
+  - override /model: baseline_cordiff_regression
+  - _self_
+
+logger:
+  wandb:
+    project: "Event-WassDiff"
+    name: 'CorrDiff Regression'
+
+trainer:
+  max_epochs: 100
+  precision: 16             # ← use AMP mixed‑precision
+
+data:
+  batch_size: 4
+  num_workers: 12
+
+callbacks:
+  log_event_data:
+    show_samples_at_start: true
+    add_reference_artifact: false
+    train_log_img_freq: 2
+    train_ckpt_freq: -1
+  model_checkpoint:
+    dirpath: ${paths.output_dir}/checkpoints
+    filename: "epoch_{epoch:03d}"
+    monitor: "val/loss"
+    mode: "min"
+    save_last: true
+    auto_insert_metric_name: false
+    save_top_k: 10 # save k best models (determined by above metric)
+  #  every_n_train_steps: 5000
+    every_n_epochs: 10
+#trainer:
+#  limit_train_batches: 2  # debug
+#  limit_val_batches: 10 # debug
+#  check_val_every_n_epoch: 1  # debug

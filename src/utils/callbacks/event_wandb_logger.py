@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 from lightning.pytorch.callbacks import RichProgressBar
 from src.utils.callbacks.generic_wandb_logger import GenericLogger, hold_pbar
 from src.utils.helper import cm_
-from src.utils.metrics import calc_mae, calc_bias, calc_rmse, calc_abs_rel, calc_sq_rel, calc_rmse_log, calc_delta_acc
+from src.utils.metrics import calc_mae, calc_bias, calc_rmse, calc_abs_rel, calc_sq_rel, calc_rmse_log, calc_delta_acc, calc_mse
 
 
 class EventLogger(GenericLogger):
@@ -109,6 +109,7 @@ class EventLogger(GenericLogger):
             row = {'val_sample/mae': calc_mae(out_, gt_, k=1, pooling_func='mean'),
                    'val_sample/abs_rel': calc_abs_rel(out_, gt_, k=1, pooling_func='mean'),
                    'val_sample/sq_rel': calc_sq_rel(out_, gt_, k=1, pooling_func='mean'),
+                   'val_sample/mse': calc_mse(out_, gt_, k=1, pooling_func='mean'),
                    'val_sample/_rmse_log': calc_rmse_log(out_, gt_, k=1, pooling_func='mean'),
                    'val_sample/delta_1.25': calc_delta_acc(out_, gt_, delta=1.25, k=1, pooling_func='mean'),
                    'val_sample/delta_1.25^2': calc_delta_acc(out_, gt_, delta=1.25 ** 2, k=1, pooling_func='mean'),
