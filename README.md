@@ -3,26 +3,29 @@
 
 ## 🚀 Overview
 
-This repository implements a two-stage **monocular depth estimation** pipeline based on **residual diffusion modeling**, inspired by
-NVIDIA’s CorrDiff framework:
+This repository implements a two-stage **monocular depth estimation** pipeline based on **residual diffusion
+modeling**, inspired by NVIDIA’s CorrDiff framework:
 
 1. **Regression UNet**  
-   A high-capacity U-Net backbone (`SongUNet` / `SongUNetPosEmbd`) is trained with a simple ℓ₂ (MSE) loss to predict the **conditional
-   mean** depth map from an event-based input.
+   A high-capacity U-Net backbone (`SongUNet` / `SongUNetPosEmbd`) is trained with a simple ℓ₂ (MSE) loss to
+   predict the **conditional mean** depth map from an event-based input.
 
 2. **Residual Diffusion UNet**  
-   A second diffusion-based U-Net learns to model the **residual** (fine-scale detail and uncertainty) on top of the regression mean.
-   The two outputs are summed at inference time to produce sharper, more realistic depth estimates.
+   A second diffusion-based U-Net learns to model the **residual** (fine-scale detail and uncertainty) on top
+   of the regression mean.The two outputs are summed at inference time to produce sharper, more realistic depth
+   estimates.
 
 ---
 
 ## 📖 Background
 
-Classic monocular depth estimation often struggles with fine details and uncertainty quantification. Residual diffusion modeling:
+Classic monocular depth estimation often struggles with fine details and uncertainty quantification. Residual
+diffusion modeling:
 
 - **Decouples** the coarse mean prediction (learned with MSE) from the stochastic high-frequency residual.  
 - **Leverages** denoising score matching to learn a diffusion process over the residuals.  
-- **Improves** both quantitative metrics (MSE, RMSE, abs_rel, sq_rel, δ-accuracy) and visual fidelity of predicted depth maps.
+- **Improves** both quantitative metrics (MSE, RMSE, abs_rel, sq_rel, δ-accuracy) and visual fidelity of
+predicted depth maps.
 
 ---
 
