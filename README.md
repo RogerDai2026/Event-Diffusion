@@ -129,5 +129,5 @@ We welcome issues and PRs! Please read our [CONTRIBUTING.md](CONTRIBUTING.md) fo
 
 ## 🧑‍💻 Contact
 
-**Roger Dai** ([qdai@uw.edu](mailto:qdai@uw.edu))
+**Roger Dai** ([qd8@rice.edu](mailto:qd8@rice.edu))
 **GitHub**: [https://github.com/your-org/monocular-depth-residual-diffusion](https://github.com/your-org/monocular-depth-residual-diffusion)
