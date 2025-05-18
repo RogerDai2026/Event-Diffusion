@@ -1,31 +1,24 @@
-````markdown
 # Monocular Depth Estimation Using Residual Diffusion
 
 ## 🚀 Overview
 
-This repository implements a two-stage monocular depth estimation pipeline based on residual diffusion
-modeling, inspired by NVIDIA’s CorrDiff framework:
+This repository implements a two‐stage **monocular depth estimation** pipeline based on **residual diffusion modeling**, inspired by NVIDIA’s CorrDiff framework:
 
-1. **Regression UNet**  
-   A high-capacity U-Net backbone (`SongUNet` / `SongUNetPosEmbd`) is trained with a simple ℓ₂ (MSE) loss to
-   predict the **conditional mean** depth map from an event-based input.
+1. **Regression UNet**
+   A high-capacity U-Net backbone (`SongUNet` / `SongUNetPosEmbd`) is trained with a simple ℓ₂ (MSE) loss to predict the **conditional mean** depth map from an event-based input.
 
-2. **Residual Diffusion UNet**  
-   A second diffusion-based U-Net learns to model the **residual** (fine-scale detail and uncertainty) on top
-   of the regression mean.The two outputs are summed at inference time to produce sharper, more realistic depth
-   estimates.
+2. **Residual Diffusion UNet**
+   A second diffusion-based U-Net learns to model the **residual** (fine-scale detail and uncertainty) on top of the regression mean. At inference time, the two outputs are summed to produce sharper, more realistic depth estimates.
 
 ---
 
 ## 📖 Background
 
-Classic monocular depth estimation often struggles with fine details and uncertainty quantification. Residual
-diffusion modeling:
+Classic monocular depth estimation often struggles with fine details and uncertainty quantification. Residual diffusion modeling:
 
-- **Decouples** the coarse mean prediction (learned with MSE) from the stochastic high-frequency residual.  
-- **Leverages** denoising score matching to learn a diffusion process over the residuals.  
-- **Improves** both quantitative metrics (MSE, RMSE, abs_rel, sq_rel, δ-accuracy) and visual fidelity of
-predicted depth maps.
+* **Decouples** the coarse mean prediction (learned with MSE) from the stochastic high-frequency residual.
+* **Leverages** denoising score matching to learn a diffusion process over those residuals.
+* **Improves** both quantitative metrics (MSE, RMSE, abs\_rel, sq\_rel, δ-accuracy) and visual fidelity of predicted depth maps.
 
 ---
 
@@ -45,7 +38,7 @@ predicted depth maps.
 │   └── train.py                    # Entry point for training & resuming
 ├── data/                           # Dataloaders & example datasets
 └── README.md                       # This file
-````
+```
 
 ---
 
@@ -138,6 +131,3 @@ We welcome issues and PRs! Please read our [CONTRIBUTING.md](CONTRIBUTING.md) fo
 
 **Roger Dai** ([qdai@uw.edu](mailto:qdai@uw.edu))
 **GitHub**: [https://github.com/your-org/monocular-depth-residual-diffusion](https://github.com/your-org/monocular-depth-residual-diffusion)
-
-```
-```
