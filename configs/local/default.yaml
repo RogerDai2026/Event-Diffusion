@@ -1,0 +1,11 @@
+# @package _global_
+# This file is not tracked by git and is specific to insight
+# note: do not append / at the end of the path
+
+local:
+#  data_dir: /shared/ad150/event3d
+  data_dir: /shared/yl241/data/event3d
+  log_dir: /home/yl241/models/Event-WassDiff
+#  eval_set_root_dir: /home/yl241/data/event2depth
+#  specified_eval_root_dir: /home/yl241/data/rainfall_plots_LiT
+  model_root_dir: /scratch/shared/models # for pretrained_models

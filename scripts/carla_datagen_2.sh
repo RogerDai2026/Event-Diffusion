@@ -1,0 +1,1 @@
+python ./src/utils/event/dataset_preprocess/gen_event_encodings.py

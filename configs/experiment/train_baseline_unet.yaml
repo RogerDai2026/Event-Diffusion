@@ -1,0 +1,76 @@
+# @package _global_
+
+# specify here default training configuration
+defaults:
+  - _self_
+  - data: carla_linear
+  - model: baseline_unet
+  - callbacks: default
+  - logger: wandb
+  - trainer: default
+  - paths: default
+  - extras: default
+  - hydra: default
+
+# experiment info
+task_name: train
+tags: ["dev"]
+
+# set False to skip model training
+train: True
+
+# evaluate on test set, using best model weights achieved during training
+# lightning chooses best weights based on the metric specified in checkpointing
+test: False
+
+# seed for random number generators in pytorch, numpy and python.random
+seed: 42
+
+# set False to disable python warnings if they are too noisy
+ignore_warnings: true
+
+# pretty print config at the start of the run using Rich library
+print_config: true
+
+# disable python warnings if they are too noisy
+warnings.filterwarnings: ["ignore"]
+
+# set False to skip hydra working directory creation
+# this can be used to debug config loading and resolution
+hydra.output_subdir: null
+
+# path to original working directory
+# hydra hijacks working directory by changing it to the new log directory
+# so it's useful to have this path as a special variable
+# https://hydra.cc/docs/next/tutorials/basic/running_your_app/working_directory
+hydra.run.dir: .
+work_dir: ${hydra:runtime.cwd}
+
+# use `python train.py experiment=experiment_name` to run specific experiment
+
+trainer:
+  max_epochs: 1000
+#  check_val_every_n_epoch: 5
+
+data:
+  batch_size: 24
+  num_workers: 24
+
+callbacks:
+  log_event_data:
+    show_samples_at_start: true
+    enable_save_ckpt: false
+    add_reference_artifact: false
+    sampling_batch_size: 8
+    train_log_img_freq: 50
+    train_ckpt_freq: -1
+  model_checkpoint:
+    dirpath: ${paths.output_dir}/checkpoints
+    filename: "epoch_{epoch:03d}"
+    monitor: "val/loss"
+    mode: "min"
+    save_last: true
+    auto_insert_metric_name: false
+    save_top_k: 10 # save k best models (determined by above metric)
+  #  every_n_train_steps: 5000
+    every_n_epochs: 50 

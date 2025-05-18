@@ -1,0 +1,21 @@
+# @package _global_
+
+defaults:
+  - data: time_encodings
+  - paths: default
+  - optional local: default
+  - _self_
+
+# parent directory that houses events.txt or npy files within its subdir
+base_dir: ${paths.data_dir}/carla/Town01_train/events
+# directory to save the encoded event frames
+save_dir: ${paths.data_dir}/carla/Town01_train/events/frame_events/ # Town01_train/events/frames_event
+# directory containing the event images
+event_dir: data/ # Town01_train/events/data/NEW_ENCODING
+npy: true # whether the events are in npy format
+height: null # height of the output image
+width: null # width of the output image
+time_encoding: N_BINS_5 # Time encoding to use for the events
+vmin: null # 0 # minimum value to keep in the event set
+vmax: null # 0.04 # maximum value to keep in the event set
+interval_vmax: null # 0.04 # interval time to normalize the time to
