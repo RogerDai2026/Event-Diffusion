@@ -3,8 +3,8 @@
 
 ## 🚀 Overview
 
-This repository implements a two-stage **monocular depth estimation** pipeline based on **residual diffusion
-modeling**, inspired by NVIDIA’s CorrDiff framework:
+This repository implements a two-stage monocular depth estimation pipeline based on residual diffusion
+modeling, inspired by NVIDIA’s CorrDiff framework:
 
 1. **Regression UNet**  
    A high-capacity U-Net backbone (`SongUNet` / `SongUNetPosEmbd`) is trained with a simple ℓ₂ (MSE) loss to
