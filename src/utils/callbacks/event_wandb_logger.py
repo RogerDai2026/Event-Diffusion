@@ -93,11 +93,29 @@ class EventLogger(GenericLogger):
         gt_grid = make_grid(gt_vis, nrow=s, normalize=True)[0, :, :]
         gt_grid_cm = cm_(gt_grid.detach().cpu(), 'magma')
 
+        sm = plt.cm.ScalarMappable(
+            norm=Normalize(vmin=0, vmax=1),  # these match the vis_pred/vis_gt range
+            cmap="magma"
+        )
+        sm.set_array([])  # dummy array
+
+        # 3) pick the meter ticks you want on the bar
+        meter_ticks = torch.tensor([5.0, 10.0, 20.0, 50.0, 100.0, 250.0])
+        tick_locs = map_depth_for_vis(meter_ticks, amax=5, amin=250).numpy()
         # put 3 grids in one plt image, row by row
         fig, axs = plt.subplots(3, 1, figsize=(s*5, 15))
         axs[0].imshow(condition_grid.detach().cpu().numpy())
         axs[1].imshow(sample_grid_cm)
+        cbar1 = fig.colorbar(sm, ax=axs[1], fraction=0.046, pad=0.02)
+        cbar1.set_ticks(tick_locs)
+        cbar1.set_ticklabels([f"{int(m)}" for m in meter_ticks])
+        cbar1.set_label("Depth (m)")
+
         axs[2].imshow(gt_grid_cm)
+        cbar2 = fig.colorbar(sm, ax=axs[2], fraction=0.046, pad=0.02)
+        cbar2.set_ticks(tick_locs)
+        cbar2.set_ticklabels([f"{int(m)}" for m in meter_ticks])
+        cbar2.set_label("Depth (m)")
         # turn off ticks
         for ax in axs:
             ax.set_xticks([])
