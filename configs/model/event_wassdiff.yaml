@@ -1,9 +1,10 @@
-_target_: src.models.baselines.cnn.event_wassdiff.EventWassDiffLitModule
+_target_: src.models.event.event_wassdiff.EventWassDiffLitModule
+
 compile: false
 num_samples: 1 # for inference, aka ensemble size
 
 # debugging flags
-display_sampling_pbar: true  # display 'sampling N steps' progress bar
+display_sampling_pbar: false  # display 'sampling N steps' progress bar
 bypass_sampling: false  # during inference; training logging is not affected
 
 optimizer_config:
@@ -52,9 +53,9 @@ model_config:
     null_token: -1
   data:
     image_size: 256 # [256, 344]
-    condition_mode: 5 # ${data.data_config.condition_mode}
+    condition_mode: 3 # ${data.data_config.condition_mode}
     num_channels: 1 # output channels
-    num_context_chs: 4 # conditional channels
+    num_context_chs: ${data.data_config.num_input_chs} # conditional channels
 #    condition_size: ${data.data_config.condition_size}
     centered: false
     precip_rescale_c: 1
@@ -79,5 +80,5 @@ model_config:
     predictor: 'reverse_diffusion'
     corrector: 'langevin'
     sampling_batch_size: 12
-    shape: [256, 352]   # TODO: hardcode for now
+    shape: [256, 344]  # TODO: hardcode for now
 

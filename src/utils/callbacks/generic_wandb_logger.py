@@ -2,7 +2,7 @@ import os
 import time
 import functools
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Callable, Tuple, List
+from typing import Any, Dict, Optional, Callable, Tuple
 import torch
 from lightning import LightningModule, Trainer
 from lightning.pytorch.utilities.types import STEP_OUTPUT

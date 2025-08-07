@@ -2,27 +2,18 @@ _target_: src.models.baselines.cnn.cnn_module.CNNLitModule
 
 # additional params
 net:
-  _target_: src.models.baselines.cnn.resnet_unet.ResNetUNet
+  _target_: src.models.baselines.cnn.cnn.SEVIRUNet
   in_channels: ${data.data_config.num_input_chs}
   out_channels: 1
-  deep_start_filters: 64
+  start_filters: 32
 
 optimizer:
   _target_: torch.optim.Adam
   _partial_: true
-  lr: 2e-5               # reduced from 2e-4
-  weight_decay: 2e-5
+  lr: 2e-4
+  weight_decay: 0.0
   betas: [0.9, 0.999]
   eps: 1e-8
-
-
-callbacks:
-  - _target_: pytorch_lightning.callbacks.EarlyStopping
-    monitor: "val_sample/sq_rel"     # or "val_sample/mae"
-    patience: 5                      # wait 5 validation runs
-    mode: "min"                      # lower is better
-    verbose: true
-
 
 criterion:
   _target_: torch.nn.MSELoss

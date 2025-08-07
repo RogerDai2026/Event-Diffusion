@@ -77,19 +77,8 @@ class EventDataModule(LightningDataModule):
         self.val_dataset = get_dataset(self.data_config.val,
                                        base_data_dir=self.data_config.base_dir,
                                        mode=DatasetMode.EVAL,
-                                       augmentation_args=self.hparams.augmentation_args,
                                        depth_transform=self.depth_transform,
                                        io_args=self.data_config.io_args)
-        
-        # Set up test dataset if configured
-        if hasattr(self.data_config, 'test') and self.data_config.test is not None:
-            self.test_dataset = get_dataset(self.data_config.test,
-                                           base_data_dir=self.data_config.base_dir,
-                                           mode=DatasetMode.EVAL,
-                                           augmentation_args=self.hparams.augmentation_args,
-                                           depth_transform=self.depth_transform,
-                                           io_args=self.data_config.io_args)
-
         self.print_dataset_stats()
 
     def print_dataset_stats(self):
@@ -120,23 +109,9 @@ class EventDataModule(LightningDataModule):
                                      generator=self.loader_generator,)
         return self.val_loader
 
-    def test_dataloader(self) -> EVAL_DATALOADERS:
-        if self.test_dataset is None:
-            # If no test dataset is set up, use validation dataset
-            print("No test dataset specified, using validation dataset for testing")
-            return self.val_dataloader()
-
-        test_loader = DataLoader(dataset=self.test_dataset,
-                                 batch_size=self.hparams.batch_size,
-                                 num_workers=self.hparams.num_workers,
-                                 pin_memory=self.hparams.pin_memory,
-                                 shuffle=False,
-                                 generator=self.loader_generator,)
-        return test_loader
-
 if __name__ == '__main__':  # debug
     with initialize(version_base=None, config_path="../../configs/data", job_name="evaluation"):
-        config = compose(config_name="latent_custom")
+        config = compose(config_name="event_carla")
     # config.batch_size = 1
     data_module = EventDataModule(data_config=config.data_config, augmentation_args=config.augmentation_args,
                                   depth_transform_args=config.depth_transform_args, batch_size=config.batch_size,

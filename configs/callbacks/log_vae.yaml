@@ -1,8 +1,0 @@
-log_vae:
-    _target_: src.utils.callbacks.vae_logger.VAELogger
-    train_log_img_freq: 1
-    train_log_score_freq: -1
-    train_ckpt_freq: -1
-    check_freq_via: epoch
-    show_samples_at_start: true
-    sampling_batch_size: 8

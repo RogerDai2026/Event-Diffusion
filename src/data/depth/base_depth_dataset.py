@@ -29,8 +29,7 @@ from enum import Enum
 from typing import Union
 import numpy as np
 import torch
-from PIL import Image, ImageFile
-ImageFile.LOAD_TRUNCATED_IMAGES = True
+from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.transforms import InterpolationMode, Resize
 import tifffile # added
@@ -123,10 +122,9 @@ class BaseDepthDataset(Dataset):
             rasters, other = self._get_data_item(index)
         except Exception as e:
             print(f"Error loading data at index {index}: {e}")
-            raise e  # Re-raise the exception instead of continuing
         
-        # if DatasetMode.TRAIN == self.mode: #or DatasetMode.EVAL == self.mode:
-        rasters = self._training_preprocess(rasters)
+        if DatasetMode.TRAIN == self.mode: #or DatasetMode.EVAL == self.mode:
+            rasters = self._training_preprocess(rasters)
         # merge
         outputs = rasters
         outputs.update(other)
@@ -217,10 +215,10 @@ class BaseDepthDataset(Dataset):
         else:
             raise NotImplementedError(f"Reading via {self.read_event_via} is not implemented.")
         # TODO: CHANGED! Maybe there's a better way to do this?
-        # # If the image h and w are not divisible by 8, crop the image: crop the image by 8
-        # factor = 8
-        # if image.shape[0] % factor != 0 or image.shape[1] % factor != 0:
-        #     image = image[: image.shape[0] // factor * factor, : image.shape[1] // factor * factor]
+        # If the image h and w are not divisible by 8, crop the image
+        factor = 8
+        if image.shape[0] % factor != 0 or image.shape[1] % factor != 0:
+            image = image[: image.shape[0] // factor * factor, : image.shape[1] // factor * factor]
         return image
 
     def _read_rgb_file(self, rel_path) -> np.ndarray:
@@ -244,20 +242,8 @@ class BaseDepthDataset(Dataset):
 
     def _training_preprocess(self, rasters):
         # Augmentation
-        if self.augm_args is not None and self.mode == DatasetMode.TRAIN:
+        if self.augm_args is not None:
             rasters = self._augment_data(rasters)
-
-        if self.augm_args is not None and "random_crop_hw" in self.augm_args:
-            hw = self.augm_args["random_crop_hw"]
-            if self.mode == DatasetMode.TRAIN:
-                rasters = self._random_crop(rasters, hw)
-            else:
-                rasters = self._center_crop(rasters, hw)
-
-
-        # # debug
-        # if torch.isnan(rasters["depth_raw_linear"]).any():
-        #     print("[DEBUG] ⚠️ depth_raw_linear contains NaNs")
 
         # Normalization
         rasters["depth_raw_norm"] = self.depth_transform(
@@ -266,14 +252,6 @@ class BaseDepthDataset(Dataset):
         rasters["depth_filled_norm"] = self.depth_transform(
             rasters["depth_filled_linear"], rasters["valid_mask_filled"]
         ).clone()
-
-        # # --- DEBUG: after normalization ---
-        # # Quick NaN checks after normalization
-        # if torch.isnan(rasters["depth_raw_norm"]).any():
-        #     print("[DEBUG] ⚠️ depth_raw_norm contains NaNs")
-        # if torch.isnan(rasters["depth_filled_norm"]).any():
-        #     print("[DEBUG] ⚠️ depth_filled_norm contains NaNs")
-
 
         # Set invalid pixel to far plane
         if self.move_invalid_to_far_plane:
@@ -289,8 +267,8 @@ class BaseDepthDataset(Dataset):
         # Resize
         if self.resize_to_hw is not None:
             resize_transform = Resize(
-                size=self.resize_to_hw, interpolation=InterpolationMode.BILINEAR, antialias=True
-            ) # originally nearest exact
+                size=self.resize_to_hw, interpolation=InterpolationMode.NEAREST_EXACT
+            )
             rasters = {k: resize_transform(v) for k, v in rasters.items()}
 
         return rasters
@@ -302,71 +280,6 @@ class BaseDepthDataset(Dataset):
             rasters_dict = {k: v.flip(-1) for k, v in rasters_dict.items()}
 
         return rasters_dict
-
-    def _random_crop(self, rasters: dict, crop_hw: tuple):
-            """
-            Randomly crop all tensors in rasters to (h, w),
-            and record the absolute coordinates of each pixel in the crop.
-            """
-            crop_h, crop_w = crop_hw
-            # pick a reference tensor to get H, W
-            ref = next(iter(rasters.values()))
-            _, H, W = ref.shape
-            if H < crop_h or W < crop_w:
-                raise ValueError(f"Crop size {crop_hw} larger than image {(H, W)}")
-
-            # choose top‐left corner
-            top = random.randint(0, H - crop_h)
-            left = random.randint(0, W - crop_w)
-            bottom = top + crop_h
-            right = left + crop_w
-
-            # build per‐pixel global_index = [[y_coords],[x_coords]] of shape [2, crop_h, crop_w]
-            ys = torch.arange(top, bottom, dtype=torch.long)
-            xs = torch.arange(left, right, dtype=torch.long)
-            # meshgrid with “ij” indexing gives grid_y[i,j]=ys[i], grid_x[i,j]=xs[j]
-            grid_y, grid_x = torch.meshgrid(ys, xs, indexing="ij")
-            global_index = torch.stack([grid_y, grid_x], dim=0)  # [2, Hc, Wc]
-
-            # now actually crop every raster entry
-            out = {}
-            for k, v in rasters.items():
-                # v is a tensor shaped [C, H, W]
-                out[k] = v[..., top:bottom, left:right]
-
-            # stash both the bounding box and the per‐pixel map
-            out["crop_coords"] = torch.tensor([top, left, bottom, right], dtype=torch.long)
-            out["global_index"] = global_index
-
-            return out
-
-    def _center_crop(self, rasters: dict, crop_hw: tuple):
-        """Deterministic center‐crop + global_index like _random_crop does."""
-        crop_h, crop_w = crop_hw
-        ref = next(iter(rasters.values()))
-        _, H, W = ref.shape
-        if H < crop_h or W < crop_w:
-            raise ValueError(f"Center crop {crop_hw} > image {(H, W)}")
-
-        top  = (H - crop_h) // 2
-        left = (W - crop_w) // 2
-        bottom = top + crop_h
-        right  = left + crop_w
-
-        # build global_index same as random version
-        ys = torch.arange(top,    bottom, dtype=torch.long)
-        xs = torch.arange(left,   right,  dtype=torch.long)
-        grid_y, grid_x = torch.meshgrid(ys, xs, indexing="ij")
-        global_index = torch.stack([grid_y, grid_x], dim=0)  # [2,Hc,Wc]
-
-        out = {}
-        for k, v in rasters.items():
-            out[k] = v[..., top:bottom, left:right]
-
-        out["crop_coords"]  = torch.tensor([top, left, bottom, right])
-        out["global_index"] = global_index
-        return out
-
 
     def __del__(self):
         if hasattr(self, "tar_obj") and self.tar_obj is not None:
@@ -389,5 +302,3 @@ def get_pred_name(rgb_basename, name_mode, suffix=".png"):
     pred_basename = os.path.splitext(pred_basename)[0] + suffix
 
     return pred_basename
-
-

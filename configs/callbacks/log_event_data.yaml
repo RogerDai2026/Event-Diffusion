@@ -2,10 +2,10 @@ log_event_data:
   _target_: src.utils.callbacks.event_wandb_logger.EventLogger
   check_freq_via: 'epoch'
   train_log_img_freq: 10
-  train_log_score_freq: 2
-  train_ckpt_freq: 20
+  train_log_score_freq: 100
+  train_ckpt_freq: 200
   show_samples_at_start: false
   show_unconditional_samples: false
   enable_save_ckpt: true
   add_reference_artifact: true
-  sampling_batch_size: 1
+  sampling_batch_size: 6

@@ -4,7 +4,7 @@
 # order of defaults determines the order in which configs override each other
 defaults:
   - _self_
-  - data: event_custom_nbin5
+  - data: event_carla
   - model: event_wassdiff
   - callbacks: default
   - logger: wandb # set logger here or use command line (e.g. `python train.py logger=tensorboard`)

@@ -17,7 +17,7 @@ import lpips
 from tabulate import tabulate
 from src.utils.helper import yprint, monitor_complete, move_batch_to_cpu, alert
 from src.utils.metrics import calc_mae, calc_mse, calc_rmse, calc_pcc, calc_csi, calc_bias, calc_fss, calc_emd, \
-    calc_hrre, calc_mppe, calc_lpips, calc_crps, calc_ssim, calc_abs_rel, calc_sq_rel, calc_rmse_log, calc_delta_acc
+    calc_hrre, calc_mppe, calc_lpips, calc_crps, calc_ssim
 
 
 class EvalOnDataset(Callback):
@@ -98,7 +98,7 @@ class EvalOnDataset(Callback):
             print(f"Skipping batch {batch_idx}; already exists.")
             pl_module.skip_next_batch = True
             return
-# Ask about self.rainfall_dataset( what's the name of our output.)
+
     def on_test_batch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", outputs: STEP_OUTPUT,
                           batch: Any, batch_idx: int, dataloader_idx: int = 0) -> None:
         if pl_module.skip_next_batch:
@@ -209,21 +209,6 @@ class EvalOnDataset(Callback):
                 row['hrre'] = calc_hrre(output, gt, hrre_thres=self.heavy_rain_threshold)
                 row['mppe'] = calc_mppe(output, gt, valid_mask)
                 row['lpips'] = calc_lpips(output, gt, lpips_model, pl_module.device)
-
-                # Add these NEW METRICS for depth evaluation:
-                # Absolute Relative Error
-                row['abs_rel'] = calc_abs_rel(output, gt, valid_mask, k=k, pooling_func=pooling_func)
-                # Squared Relative Error
-                row['sq_rel'] = calc_sq_rel(output, gt, valid_mask, k=k, pooling_func=pooling_func)
-                # RMSE in Log Space
-                row['rmse_log'] = calc_rmse_log(output, gt, valid_mask, k=k, pooling_func=pooling_func)
-                # Thresholded Accuracy (δ=1.25, 1.25², 1.25³)
-                row['delta1'] = calc_delta_acc(output, gt, delta=1.25, valid_mask=valid_mask, k=k,
-                                               pooling_func=pooling_func)
-                row['delta2'] = calc_delta_acc(output, gt, delta=1.25 ** 2, valid_mask=valid_mask, k=k,
-                                               pooling_func=pooling_func)
-                row['delta3'] = calc_delta_acc(output, gt, delta=1.25 ** 3, valid_mask=valid_mask, k=k,
-                                               pooling_func=pooling_func)
                 metrics.append(list(row.values()))
 
         metrics_df = pd.DataFrame(metrics, columns=list(row.keys()))
