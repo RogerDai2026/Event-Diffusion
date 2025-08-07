@@ -37,22 +37,6 @@ TIME_ENCODING = {
     "INTER_FRAME_LINEAR": 5,
 }
 
-def normalize(x, relative_vmin=None, relative_vmax=None, interval_vmax=None):
-    vmax = x.max()
-    vmin = x.min()
-    if (relative_vmax is not None):
-        vmax = relative_vmax + vmin
-    if (relative_vmin is not None):
-        vmin = relative_vmin + vmin
-    if (interval_vmax is None):
-        interval_vmax = vmax - vmin
-
-
-    # Keep only the values between vmin and vmax
-    x = x * (x >= vmin) * (x <= vmax)
-
-    return (x - vmin) / interval_vmax
-
 def positional_encoding_1d(times, num_encodings=3):
     # Positional encoding formula: sin/cos of different frequencies
     encodings = np.zeros((len(times), num_encodings * 2))

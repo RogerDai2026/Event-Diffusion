@@ -1,0 +1,41 @@
+_target_: src.models.event.vae_to_unet.VaeCorrDiffPipelineLitModule
+
+# -----------------------------------------------------------------------------
+# first stage: pretrained VAE
+vae:
+#  checkpoint_path: /home/qd8/models/Event-WassDiff/2025-07-11_22-10-45/checkpoints/last.ckpt
+  checkpoint_path: /home/qd8/models/Event-WassDiff/2025-07-11_12-01-37/checkpoints/last.ckpt
+  cfg_path:  "src/utils/latent_diffusion/models/first_stage_models/kl-f4/config.yaml"
+  allow_resize: true
+  compile: false
+  # load weights and freeze decoder+encoder
+
+# -----------------------------------------------------------------------------
+# second stage: CorrDiff UNet on latent codes
+regressor:
+  _target_: src.models.baselines.cnn.corrdiff_unet.CorrDiffEventLitModule
+  net:
+    _target_: physicsnemo.models.diffusion.unet.UNet
+    # now feeding 3 latent channels + 4 pos-emb = 7 input channels
+    img_channels: 3
+    N_grid_channels: 4
+    embedding_type: "positional"
+    checkpoint_level: 0
+    use_fp16: false
+    img_in_channels: 7
+    img_out_channels: 1
+    # latent spatial dims = 720/4 × 1280/4 = 180×320
+    img_resolution: [192, 320]
+    model_type: "SongUNetPosEmbd"
+    gridtype: "sinusoidal"
+  optimizer:
+    _target_: torch.optim.Adam
+    _partial_: true
+    lr: 2e-4
+    betas: [0.9, 0.999]
+    eps: 1e-8
+  criterion:
+    _target_: src.utils.corrdiff_utils.loss.RegressionLoss
+  compile: false
+  num_samples: 1 # for inference, aka ensemble size
+

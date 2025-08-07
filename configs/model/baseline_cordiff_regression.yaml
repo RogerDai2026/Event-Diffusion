@@ -16,21 +16,25 @@
 
 _target_: src.models.baselines.cnn.corrdiff_unet.CorrDiffEventLitModule
 compile: false
-num_samples: 1 # for inference, aka ensemble size
+num_samples: 8 # for inference, aka ensemble size
 
 net:
   _target_: physicsnemo.models.diffusion.unet.UNet
 #  name: regression # Name of the preconditioner
 #  hr_mean_conditioning: False # High-res mean (regression's output) as additional condition
   ##### standard model configs #####
-  img_channels: 4
-  N_grid_channels: 4 # 4# output channels for depth
-  embedding_type: "zero"
+  img_channels: 3  # Input event channels
+  N_grid_channels: 4  # Positional embedding channels
+  embedding_type: "positional"  # Changed from "zero" to enable positional embeddings
   checkpoint_level: 0
   use_fp16: false
-  img_in_channels:  7
+  img_in_channels: 9  # 3 (event) + 4 (positional embedding) = 7
   img_out_channels: 1  # for depth
-  img_resolution: [256, 352]
+  img_resolution: [256, 352]  # Match your data resolution
+  model_type: "SongUNetPosEmbd"  # Enable positional embedding model
+  gridtype: "sinusoidal"  # Type of positional embedding
+
+
 #  model_type: "SongUNet" # match carla_linear dataset // songuet[256, 344]; songunePosEmb(defualt): [256. 352]
 #  gridtype: "linear"
 
@@ -44,7 +48,7 @@ optimizer:
 criterion:
   _target_: src.utils.corrdiff_utils.loss.RegressionLoss
 
-allow_resize: true  # if true, resizes data to multiples of 16 to be compatible with UNet
+#allow_resize: true  # if true, resizes data to multiples of 16 to be compatible with UNet
 
 
   # TODO: DID NOT IMPLEMENT lr_decay or lr_rampup

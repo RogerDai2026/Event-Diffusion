@@ -14,17 +14,17 @@ data_config:
     disp_name: carla_train
     dir: ${local.data_dir}/carla/
     filenames: ./data_split/${..encoding_mode}/carla_train.txt
-    resize_to_hw:
-      - 256
-      - 344
+#    resize_to_hw:
+#      - 256
+#      - 344
   val:
     name: carla
     disp_name: carla_val
     dir: ${local.data_dir}/carla/
     filenames: ./data_split/${..encoding_mode}/carla_val_single.txt  # TODO: change to carla_val.txt later
-    resize_to_hw:
-      - 256
-      - 344
+#    resize_to_hw:
+#      - 256
+#      - 344
   io_args:
     read_event_via: 'default'
 

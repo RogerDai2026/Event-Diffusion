@@ -32,6 +32,8 @@ from .scannet_dataset import ScanNetDataset
 from .vkitti_dataset import VirtualKITTIDataset
 from .carla_dataset import CarlaDataset
 from .mvsec_dataset import MVSECDataset
+from .custom_dataset import CustomDataset
+from .cached_latent_dataset import CachedLatentDepthDataset
 
 
 dataset_name_class_dict = {
@@ -44,6 +46,8 @@ dataset_name_class_dict = {
     "scannet": ScanNetDataset,
     "carla": CarlaDataset,
     "mvsec": MVSECDataset,
+    "custom": CustomDataset,
+    "latent": CachedLatentDepthDataset,
 }
 
 

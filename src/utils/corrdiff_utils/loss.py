@@ -502,7 +502,14 @@ class ResLoss:
 
         rnd_normal = torch.randn([img_clean.shape[0], 1, 1, 1], device=img_clean.device)
         sigma = (rnd_normal * self.P_std + self.P_mean).exp()
-        weight = (sigma**2 + self.sigma_data**2) / (sigma * self.sigma_data) ** 2
+
+        if torch.isnan(sigma).any():
+            print(f"[CRIT-DEBUG] NaNs in sigma: {torch.isnan(sigma).sum().item()}")
+
+        weight = (sigma**2 + self.sigma_data**2) / ((sigma * self.sigma_data) ** 2)
+
+        if torch.isnan(sigma).any():
+            print(f"[CRIT-DEBUG] NaNs in weight: {torch.isnan(weight).sum().item()}")
 
         # augment for conditional generaiton
         img_tot = torch.cat((img_clean, img_lr), dim=1)
@@ -530,6 +537,8 @@ class ResLoss:
             # lead_time_label=lead_time_label, # modified by Yuhao Liu
             augment_labels=augment_labels,
         )
+        if torch.isnan(y_mean).any():
+            print(f"[CRIT-DEBUG] NaNs in regression output y_mean: {torch.isnan(y_mean).sum().item()}")
 
         y = y - y_mean
 
@@ -612,16 +621,46 @@ class ResLoss:
             y = y_new
             y_lr = y_lr_new
         latent = y + torch.randn_like(y) * sigma
+
+        if torch.isnan(latent).any():
+            print(f"[CRIT-DEBUG] NaNs in latent: {torch.isnan(latent).sum().item()}")
+
+        # form your latent, y_lr, sigma as before …
+
+        # ==== DEBUG DUMP ====
+        # with torch.no_grad():
+        #     l_min, l_max, l_mean = latent.min().item(), latent.max().item(), latent.mean().item()
+        #     yl_min, yl_max, yl_mean = y_lr.min().item(), y_lr.max().item(), y_lr.mean().item()
+        #     s_min, s_max, s_mean = sigma.min().item(), sigma.max().item(), sigma.mean().item()
+        #     n_nan_l = torch.isnan(latent).sum().item()
+        #     n_nan_yl = torch.isnan(y_lr).sum().item()
+        #     n_nan_s = torch.isnan(sigma).sum().item()
+        #     print(
+        #         f"[D-INP] latent: shape={tuple(latent.shape)}, nan={n_nan_l}, range=[{l_min:.4f},{l_max:.4f}]")
+        #     print(
+        #         f"[D-INP]   y_lr: nan={n_nan_yl}, range=[{yl_min:.4f},{yl_max:.4f}]")
+        #     print(
+        #         f"[D-INP] sigma: shape={tuple(sigma.shape)}, nan={n_nan_s}, range=[{s_min:.4f},{s_max:.4f}]")
+
         D_yn = net(
-            latent,
-            y_lr,
-            sigma,
-            labels,
-            global_index=global_index,
-            # lead_time_label=lead_time_label,
-            augment_labels=augment_labels,
+                latent,
+                y_lr,
+                sigma,
+                labels,
+                global_index=global_index,
+                # lead_time_label=lead_time_label,
+                augment_labels=augment_labels,
         )
-        loss = weight * ((D_yn - y) ** 2)
+
+        # D_yn = D_yn.clamp(-1.0, 1.0)
+
+        if torch.isnan(D_yn).any():
+            print(f"[CRIT-DEBUG] NaNs in diffusion output D_yn: {torch.isnan(D_yn).sum().item()}")
+
+        res = (D_yn - y)
+        if torch.isnan(res).any():
+            print(f"[CRIT-DEBUG] NaNs in diffusion output res: {torch.isnan(res).sum().item()}")
+        loss = weight * (res ** 2)
 
         return loss, D_yn
 

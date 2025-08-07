@@ -1,0 +1,40 @@
+# @package _global_
+defaults:
+  - override /model: event_wassdiff
+  - override /data: event_custom_nbin5
+  - _self_
+
+trainer:
+  max_epochs: 500
+  check_val_every_n_epoch: 3
+  enable_progress_bar: true
+
+logger:
+  wandb:
+    project: "VAE"
+    name: "Train_vae"
+
+data:
+  batch_size: 8
+  num_workers: 8
+
+callbacks:
+  log_event_data:
+    _target_: src.utils.callbacks.event_wandb_logger.EventLogger
+    train_log_img_freq: 1        # log sample images every 10 epochs
+    train_log_score_freq: 10     # log sample‐metrics every 100 steps
+    train_ckpt_freq: -1           # disable internal ckpt
+    sampling_batch_size: 8
+    add_reference_artifact: true
+
+  model_checkpoint:
+    _target_: lightning.pytorch.callbacks.ModelCheckpoint
+    dirpath: ${paths.output_dir}/checkpoints
+    filename: "epoch_{epoch:03d}"
+    monitor: "val/loss"
+    mode: "min"
+    save_last: true
+    auto_insert_metric_name: false
+    save_top_k: 3
+    every_n_epochs: 50
+

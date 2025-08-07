@@ -1,0 +1,16 @@
+defaults:
+  - event_custom
+  - _self_
+
+data_config:
+  train_batch_size: 1
+  val_batch_size: 4
+  encoding_mode: custom_nbins_3
+  num_input_chs: 3
+  # Keep the original base_dir - the dataset will handle different file types
+  train:
+    filenames: /home/qd8/code/Event-WassDiff/data_split/custom_nbin3/custom_train.txt
+  val:
+    filenames: /home/qd8/code/Event-WassDiff/data_split/custom_nbin3/custom_val_small.txt
+  io_args:
+    read_event_via: 'tifffile'

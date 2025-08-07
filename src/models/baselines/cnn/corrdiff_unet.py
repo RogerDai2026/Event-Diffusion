@@ -1,12 +1,14 @@
 from typing import Any, Dict, Tuple
 import torch
 from hydra.utils import instantiate
-from lightning.pytorch import LightningModule
+from scipy.stats.tests.test_continuous_fit_censored import optimizer
+
 from src.utils.event.event_data_utils import resize_to_multiple_of_16
 from src.utils.helper import yprint
 from src.models.event.generic_e2d_module import GenericE2DModule
 from src.utils.corrdiff_utils.inference import regression_step_only, diffusion_step_batch
-from physicsnemo.models.diffusion.unet import UNet as PN_UNet
+from physicsnemo.models.diffusion import UNet as PN_UNet
+from hydra.utils import call
 
 
 class CorrDiffEventLitModule(GenericE2DModule):
@@ -45,31 +47,37 @@ class CorrDiffEventLitModule(GenericE2DModule):
         optim = self.hparams.optimizer(params=self.net.parameters())
         return {"optimizer": optim}
 
-    def forward(self, event: torch.Tensor) -> torch.Tensor:
+    def forward(self, event: torch.Tensor, global_index: torch.Tensor = None) -> torch.Tensor:
         # event.shape == [B, C_event, H, W]
         B, C_event, H, W = event.shape
         C_out = self.net.img_out_channels  # should be 1 for depth
-        # 1) create a zero “high-res” tensor
+        # 1) create a zero "high-res" tensor
         hr = torch.zeros(B, C_out, H, W,
                          device=event.device,
                          dtype=event.dtype)
         # 2) call the PhysicsNemo UNet wrapper:
         #    forward(x=hr, img_lr=event, sigma=0.0)
-        #    (or omit sigma if you’re using the regression-UNet forward which doesn’t take it)
-        return self.net(hr, event, sigma=torch.tensor(0.0, device=event.device))
+        #    Only pass global_index if it's not None
+        if global_index is not None:
+            return self.net(hr, event, global_index=global_index, sigma=torch.tensor(0.0, device=event.device))
+        else:
+            return self.net(hr, event, sigma=torch.tensor(0.0, device=event.device))
+
+    # , sigma = torch.tensor(0.0, device=event.device)
 
     def _maybe_resize(self, *tensors: torch.Tensor) -> Tuple[torch.Tensor, ...]:
         if not self.hparams.allow_resize:
             return tensors
         return tuple(resize_to_multiple_of_16(t) for t in tensors)
 
-    def training_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> torch.Tensor:
+    def training_step(self, batch: Dict[str, torch.Tensor], batch_idx: int):
         # batch comes from GenericE2DModule dataloader
         batch = self._fill_missing_keys(batch)
         cond, gt = self._generate_condition(batch)
         cond, gt = self._maybe_resize(cond, gt)
+        global_index = batch.get("global_index", None)
 
-        pred = self.forward(cond)
+        pred = self.forward(cond, global_index)
         loss, prediction = self.criterion(
             net=self.net,
             img_clean=gt,
@@ -81,14 +89,19 @@ class CorrDiffEventLitModule(GenericE2DModule):
             on_step=True, on_epoch=False,
             prog_bar=False, batch_size=cond.shape[0]
         )
-        return loss
+        return {
+            "loss":       loss,
+            "prediction": pred,   # shape (B, 1, H, W)
+            "gt":         gt,           # shape (B, 1, H, W)
+            "condition":  cond,         # shape (B, C_cond, H, W)
+            "global_index": global_index,  # [B,2,H,W]
+        }
 
     def validation_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> Dict[str, torch.Tensor]:
         batch = self._fill_missing_keys(batch)
         cond, gt = self._generate_condition(batch)
         cond, gt = self._maybe_resize(cond, gt)
 
-        pred = self.forward(cond)
         loss, prediction = self.criterion(
             net=self.net,
             img_clean=gt,
@@ -108,29 +121,15 @@ class CorrDiffEventLitModule(GenericE2DModule):
         cond, gt = self._generate_condition(batch)
         cond, gt = self._maybe_resize(cond, gt)
 
-        # 2) run regression-only inference
-        B, C, H, W = cond.shape
-        latent_shape = (B, 1, H, W)
-        with torch.inference_mode():
-            mean_pred = regression_step_only(
-                net=self.net,
-                img_lr=cond,
-                latents_shape=latent_shape,
-                lead_time_label=None
-            )
+        step_output = {"batch_dict": batch, "condition": cond}
+        return step_output
 
-        return {
-            "condition": cond.cpu(),
-            "mean_prediction": mean_pred.cpu(),
-            "ground_truth": gt.cpu(),
-            "batch_idx": batch_idx
-        }
 
     def sample(self, condition: torch.Tensor) -> torch.Tensor:
         # optionally resize here, if you want the same logic as train/val
         B, C, H, W = condition.shape
         latent_shape = (B, 1, H, W)
-        # enforce the “regression” time-step t=1.0 and float64, as in the original
+        # enforce the "regression" time-step t=1.0 and float64, as in the original
         return regression_step_only(
             net=self.net,
             img_lr=condition,
@@ -169,6 +168,7 @@ class CorrDiffEventDiffusionModule(GenericE2DModule):
         self.criterion = criterion
         self.optimizer_cfg = optimizer
         self.regression_ckpt = regression_net_ckpt
+        # self.sampling_cfg = sampling
         self.sampler = sampling
         self.compile = compile
         self.allow_resize = allow_resize
@@ -176,15 +176,13 @@ class CorrDiffEventDiffusionModule(GenericE2DModule):
         # will be filled in setup()
         self.regression_net = None
         self.save_hyperparameters(logger=False,
-                                  ignore=("net", "criterion", "optimizer_cfg", "sampler"))
+                                  ignore=("net", "criterion", "optimizer_cfg", "sampling"))
 
 
     def setup(self, stage: str):
-        # 1) Optionally compile your *residual* UNet
         if self.compile and stage == "fit":
             self.net = torch.compile(self.net)
 
-        # 2) Reconstruct the *regression* U-Net
         cfg = self.hparams.regression_model_cfg
         reg_net = PN_UNet(
             img_channels     = cfg["img_channels"],
@@ -196,8 +194,7 @@ class CorrDiffEventDiffusionModule(GenericE2DModule):
             **cfg.get("model_kwargs", {}),
         )
 
-        # 3) Load & strip the Lightning checkpoint
-        ckpt = torch.load(self.regression_ckpt, map_location="cpu")
+        ckpt = torch.load(self.regression_ckpt, map_location=self.device, weights_only=False)
         sd   = ckpt.get("state_dict", ckpt)
         stripped = {}
         for k, v in sd.items():
@@ -208,7 +205,6 @@ class CorrDiffEventDiffusionModule(GenericE2DModule):
 
         reg_net.model.load_state_dict(stripped, strict=False)
 
-        # 4) Freeze & move to device
         reg_net.eval()
         for p in reg_net.parameters():
             p.requires_grad = False
@@ -216,9 +212,8 @@ class CorrDiffEventDiffusionModule(GenericE2DModule):
 
         yprint(f"Loaded regression U-Net from {self.regression_ckpt}")
 
-            # 5) finally bind it into your residual‐diffusion loss
-            #    so that later your __call__ uses a real nn.Module, not a dict
         self.criterion = self.criterion(self.regression_net)
+
 
     def configure_optimizers(self) -> Dict[str, Any]:
         return {"optimizer": self.optimizer_cfg(params=self.net.parameters())}
@@ -226,7 +221,7 @@ class CorrDiffEventDiffusionModule(GenericE2DModule):
     def forward(self, event: torch.Tensor) -> torch.Tensor:
         # event: (B, C_event, H, W)
         B, _, H, W = event.shape
-        # 1) zero‐initialize the “HR” channels
+        # 1) zero‐initialize the "HR" channels
         hr = torch.zeros(B, self.net.img_out_channels, H, W,
                          device=event.device, dtype=event.dtype)
         # 2) feed through the diffusion UNet in regression‐only mode (σ=0)
@@ -251,6 +246,13 @@ class CorrDiffEventDiffusionModule(GenericE2DModule):
             img_lr=event
         )
         loss = loss.mean()
+        if torch.isnan(loss).any():
+            # this will always show, even if you skip the batch
+            n_nan = torch.isnan(loss).sum().item()
+            n_inf = torch.isinf(loss).sum().item()
+            print(f"[CRIT-DEBUG] Bad batch {batch_idx}: loss has {n_nan} NaNs and {n_inf} Infs → skipping")
+            loss = torch.nan_to_num(loss, nan=0.0, posinf=1e6, neginf=-1e6)
+
         self.log("train/loss", loss, on_step=True, on_epoch=False,
                  prog_bar=False, batch_size=event.shape[0])
         return loss
@@ -272,65 +274,71 @@ class CorrDiffEventDiffusionModule(GenericE2DModule):
         # pass these along for the EventLogger callback
         return {"batch_dict": batch, "condition": event}
 
-    def test_step(self, batch: Tuple[Any], batch_idx: int) -> Dict[str, Any]:
-        batch_dict, batch_coords, _, valid_mask = batch
-        event, gt = self._generate_condition(batch_dict)
+    def test_step(self, batch: Dict[str, Any], batch_idx: int) -> Dict[str, Any]:
+        # 1) prepare inputs just like train/val
 
-        # possibly ensemble
-        if self.hparams.num_samples > 1 and event.shape[0] == 1:
-            event = event.repeat(self.hparams.num_samples, 1, 1, 1)
+        cond = batch['rgb_norm']
+        # replace NaN, +inf, –inf with 0
+        cond = torch.nan_to_num(cond, nan=0.0, posinf=0.0, neginf=0.0)
+        batch['rgb_norm'] = cond
 
-        # 1) regression mean
-        latent_shape = (event.shape[0], 1, event.shape[2], event.shape[3])
-        mean_pred = regression_step_only(
-            net=self.regression_net,
-            img_lr=event,
-            latents_shape=latent_shape,
-            lead_time_label=None
-        )
+        batch = self._fill_missing_keys(batch)
+        cond, gt = self._generate_condition(batch)
+        cond, gt = self._maybe_resize(cond, gt)
 
-        # 2) residual via diffusion UNet
-        res_pred = diffusion_step_batch(
-            net=self.net,
-            sampler_fn=self.sampler,
-            img_lr=event,
-            img_shape=(event.shape[2], event.shape[3]),
-            img_out_channels=1,
-            device=self.device,
-            hr_mean=None,
-            lead_time_label=None,
-        )
+        B, C, H, W = cond.shape
+        latent_shape = (B, 1, H, W)
 
-        final = mean_pred + res_pred
-        # stash into batch_dict for callbacks
-        batch_dict["precip_output" if self.hparams.num_samples == 1 else
-        [f"precip_output_{i}" for i in range(self.hparams.num_samples)]] = final
+        # 2) run both stages under no_grad
+        with torch.inference_mode():
+            # a) regression mean
+            mean_pred = regression_step_only(
+                net=self.regression_net,
+                img_lr=cond,
+                latents_shape=latent_shape,
+                lead_time_label=None
+            )
+
+            res_pred = diffusion_step_batch(
+                net=self.net,
+                sampler_fn=self.sampler,
+                img_lr=cond,
+                img_shape=(H, W),
+                img_out_channels=1,
+                device=self.device,
+                hr_mean=None, #possibly mean_prediction
+                lead_time_label=None,
+            )
+        final_pred = mean_pred + res_pred
 
         return {
-            "batch_dict": batch_dict,
-            "batch_coords": batch_coords,
-            "xr_low_res_batch": None,
-            "valid_mask": valid_mask
+            "condition":         cond.cpu(),
+            "mean_prediction":   final_pred.cpu(),
+            "ground_truth":      gt.cpu(),
+            "batch_idx":         batch_idx,
         }
 
     def sample(self, event: torch.Tensor) -> torch.Tensor:
         # exactly the same two‐stage pipeline
         B, C, H, W = event.shape
         latent_shape = (B, 1, H, W)
+            # a) regression mean
         mean_pred = regression_step_only(
             net=self.regression_net,
             img_lr=event,
             latents_shape=latent_shape,
             lead_time_label=None
-        )
+            )
         res_pred = diffusion_step_batch(
-            net=self.net,
-            sampler_fn=self.sampler,
-            img_lr=event,
-            img_shape=(H, W),
-            img_out_channels=1,
-            device=self.device,
-            hr_mean=None,
-            lead_time_label=None
-        )
+                net=self.net,
+                sampler_fn=self.sampler,
+                img_lr=event,
+                img_shape=(H, W),
+                img_out_channels=1,
+                device=self.device,
+                hr_mean=mean_pred,
+                lead_time_label=None
+            )
         return mean_pred + res_pred
+
+    #note: mgiht be wrong (noise should cover the mean_pred)

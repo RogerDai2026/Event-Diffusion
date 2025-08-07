@@ -1,0 +1,19 @@
+# @package _global_
+defaults:
+  - override /model: baseline_vae
+  - override /data: vae_nbin5_eval
+  - _self_
+
+
+paths:
+  output_dir: /home/qd8/eval/vae_test
+  log_dir: ${paths.output_dir}
+
+callbacks:
+  log_vae:
+    _target_: src.utils.callbacks.vae_logger.VAELogger
+    train_log_img_freq: 1
+    train_log_score_freq: -1
+    train_ckpt_freq: -1
+    show_samples_at_start: true
+    sampling_batch_size: 8

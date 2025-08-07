@@ -1,0 +1,1 @@
+/shared/qd8/event3d/MVSEC/event_tensor_0000003562_nbin5.tif /shared/ad150/event3d/MVSEC/mvsec_outdoor_day1/depth/data/depth_0000003562.npy
