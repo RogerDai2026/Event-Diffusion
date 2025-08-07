@@ -70,61 +70,76 @@ class EventLogger(GenericLogger):
     @hold_pbar("sampling...")
     def log_samples(self, trainer: Trainer, pl_module: LightningModule, outputs: Dict[str, torch.Tensor]):
         # pbar_taskid, original_pbar_desc = self._modify_pbar_desc(stage=trainer.state.stage)
-
         condition = outputs['condition']
         batch_dict = outputs['batch_dict']
-        gt = outputs['batch_dict']['depth_raw_norm']
-        # config = pl_module.model_config
-        # s = pl_module.model_config.sampling.sampling_batch_size
+        gt = batch_dict['depth_raw_norm']
         s = self.sampling_batch_size
         sample = pl_module.sample(condition[0:s])
 
-        condition_grid = make_grid(condition[0:s].detach().cpu(), nrow=s, normalize=True).permute(1, 2, 0)
-        # only display 1st 3 channels
-        condition_grid = condition_grid[:, :, 0:3]
+        # 1) condition grid (first 3 channels)
+        condition_grid = make_grid(condition[0:s].detach().cpu(), nrow=s, normalize=True)
+        condition_grid = condition_grid.permute(1, 2, 0)[:, :, :3].numpy()
 
+        # 2) pull out metrics (in meters)
         sample_metric = self.depth_transformer.denormalize(sample)
-        sample_vis = map_depth_for_vis(sample_metric, amin=5, amax=250)
-        sample_grid = make_grid(sample_vis, nrow=s, normalize=True)[0, :, :]
-        sample_grid_cm = cm_(sample_grid.detach().cpu(), 'magma')
-
         gt_metric = self.depth_transformer.denormalize(gt[0:s])
+
+        # 3) log‐invert → [0,1]
+        sample_vis = map_depth_for_vis(sample_metric, amin=5, amax=250)  # torch [B,1,H,W]
         gt_vis = map_depth_for_vis(gt_metric, amin=5, amax=250)
-        gt_grid = make_grid(gt_vis, nrow=s, normalize=True)[0, :, :]
-        gt_grid_cm = cm_(gt_grid.detach().cpu(), 'magma')
 
-        sm = plt.cm.ScalarMappable(
-            norm=Normalize(vmin=0, vmax=1),  # these match the vis_pred/vis_gt range
-            cmap="magma"
-        )
-        sm.set_array([])  # dummy array
+        # 4) make the float grids
+        sample_grid = make_grid(sample_vis, nrow=s, normalize=True)[0].detach().cpu().numpy()  # [H, W]
+        gt_grid = make_grid(gt_vis, nrow=s, normalize=True)[0].detach().cpu().numpy()
 
-        # 3) pick the meter ticks you want on the bar
+        # 5) pick your meter ticks and their normalized locations
         meter_ticks = torch.tensor([5.0, 10.0, 20.0, 50.0, 100.0, 250.0])
-        tick_locs = map_depth_for_vis(meter_ticks, amax=5, amin=250).numpy()
-        # put 3 grids in one plt image, row by row
-        fig, axs = plt.subplots(3, 1, figsize=(s*5, 15))
-        axs[0].imshow(condition_grid.detach().cpu().numpy())
-        axs[1].imshow(sample_grid_cm)
-        cbar1 = fig.colorbar(sm, ax=axs[1], fraction=0.046, pad=0.02)
+        tick_locs = map_depth_for_vis(meter_ticks, amax=250.0, amin=5.0).numpy()
+
+        # 3) now build a 3×2 layout so col0 is images, col1 is colorbars:
+        fig = plt.figure(figsize=(s * 7, 18))
+        # slim down the colorbar column:
+        gs = fig.add_gridspec(3, 2, width_ratios=[1, 0.01], wspace=0.01)
+        ax0 = fig.add_subplot(gs[0, 0])
+        # show RGB event condition, with gray=0, white=+1, black=-1
+        im0 = ax0.imshow(condition_grid, cmap='gray', vmin=-1, vmax=1, aspect='auto')
+        ax0.set_title('Condition')
+        ax0.axis('off')
+        # colorbar for condition
+        cax0 = fig.add_subplot(gs[0, 1])
+        cbar0 = fig.colorbar(im0, cax=cax0)
+        cbar0.set_label('Event polarity')
+        cbar0.set_ticks([-1.0, 0.0, 1.0])
+        cbar0.set_ticklabels(['-', '0', '+'])
+        cbar0.set_label('Normalized value')
+
+        # --- Prediction row ---
+        ax1 = fig.add_subplot(gs[1, 0])
+        im1 = ax1.imshow(sample_grid, cmap='magma', vmin=0, vmax=1, aspect='auto')
+        ax1.set_title('Prediction')
+        ax1.axis('off')
+        cax1 = fig.add_subplot(gs[1, 1])
+        cbar1 = fig.colorbar(im1, cax=cax1)
+        cbar1.set_label('Depth (m)')
         cbar1.set_ticks(tick_locs)
         cbar1.set_ticklabels([f"{int(m)}" for m in meter_ticks])
-        cbar1.set_label("Depth (m)")
 
-        axs[2].imshow(gt_grid_cm)
-        cbar2 = fig.colorbar(sm, ax=axs[2], fraction=0.046, pad=0.02)
+        # --- Ground Truth row ---
+        ax2 = fig.add_subplot(gs[2, 0])
+        im2 = ax2.imshow(gt_grid, cmap='magma', vmin=0, vmax=1, aspect='auto')
+        ax2.set_title('Ground Truth')
+        ax2.axis('off')
+        cax2 = fig.add_subplot(gs[2, 1])
+        cbar2 = fig.colorbar(im2, cax=cax2)
+        cbar2.set_label('Depth (m)')
         cbar2.set_ticks(tick_locs)
         cbar2.set_ticklabels([f"{int(m)}" for m in meter_ticks])
-        cbar2.set_label("Depth (m)")
-        # turn off ticks
-        for ax in axs:
-            ax.set_xticks([])
-            ax.set_yticks([])
 
         plt.tight_layout()
+        wandb.log({
+            'val/conditional_samples': wandb.Image(fig, caption='condition, prediction, GT')
+        })
         plt.close(fig)
-        images = wandb.Image(fig, caption="condition, prediction, GT")
-        wandb.log({"val/conditional_samples": images})
 
         # report metrics
         if self.report_sample_metrics:
