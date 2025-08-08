@@ -1,0 +1,39 @@
+_target_: src.data.event_datamodule.EventDataModule
+batch_size: 8
+num_workers: 8
+pin_memory: true
+seed: 42
+
+data_config:
+  base_dir: /scratch/shared/data/output/
+  encoding_mode: custom
+  num_input_chs: 3
+  train:
+    name: custom
+    disp_name: custom_train
+    dir: ""
+    filenames: data_split/custom/custom_train.txt
+    resize_to_hw:
+      - 256  # Much smaller than 720
+      - 352  # Much smaller than 1280 (same as CARLA)
+  val:
+    name: custom
+    disp_name: custom_val
+    dir: ""
+    filenames: data_split/custom/custom_val_small.txt
+    resize_to_hw:
+      - 256
+      - 352
+  io_args:
+    read_event_via: 'default'
+
+augmentation_args:
+    lr_flip_p: 0.5
+
+depth_transform_args:
+  type: reversible_normalization
+  clip: true
+  norm_min: -1.0
+  norm_max: 1.0
+  min_max_quantile: 0.02
+  max_depth: 250.0 

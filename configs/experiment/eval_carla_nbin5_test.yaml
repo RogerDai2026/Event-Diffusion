@@ -1,0 +1,28 @@
+# @package _global_
+defaults:
+  - override /model: event_wassdiff
+  - override /data: event_carla_nbin5_test
+  - _self_
+
+
+
+# Model checkpoint path for evaluation
+model:
+#  pytorch_ckpt_path: /home/qd8/models/Event-WassDiff/2025-06-23_00-41-39/checkpoints/last.ckpt
+  num_samples: 1
+  compile: true
+  display_sampling_pbar: false
+
+# Output paths for evaluation results
+paths:
+  output_dir: /home/qd8/eval/carla_nbin5_test
+  log_dir: ${paths.output_dir}
+
+callbacks:
+  log_event_data:
+    _target_: src.utils.callbacks.event_wandb_logger.EventLogger
+    train_log_img_freq: 1        # log sample images every 10 epochs
+    train_log_score_freq: 10     # log sample‐metrics every 100 steps
+    train_ckpt_freq: -1           # disable internal ckpt
+    sampling_batch_size: 8
+    add_reference_artifact: true

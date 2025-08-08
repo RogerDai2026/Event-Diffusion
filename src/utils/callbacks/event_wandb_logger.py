@@ -5,6 +5,7 @@ import os
 from typing import Any, Dict, Optional
 from matplotlib import cm
 import numpy as np
+from datetime import datetime
 import torch
 from matplotlib.colors import Normalize
 import torch.nn.functional as F
@@ -180,118 +181,134 @@ class EventLogger(GenericLogger):
         self.depth_transformer = trainer.datamodule.depth_transform
 
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
-        save_dir = "/home/qd8/eval"
-        os.makedirs(save_dir, exist_ok=True)
 
+        # only first batch
+        if batch_idx != 0:
+            return
+
+        # 1) make a timestamped run dir
+        ts = datetime.now().strftime("run_%Y%m%d_%H%M%S")
+        run_dir = os.path.join("/home/qd8/eval", ts)
+        os.makedirs(run_dir, exist_ok=True)
+
+        # unpack
         condition = outputs["condition"]  # [B, C, H, W]
-        gt = outputs["batch_dict"]["depth_raw_norm"]  # [B,1,H,W]
+        gt_norm = outputs["batch_dict"]["depth_raw_norm"]  # [B, 1, H, W]
+        B, C, H, W = condition.shape
         s = self.sampling_batch_size
 
-        # prediction
-        if "prediction" in outputs and outputs["prediction"] is not None:
-            sample = outputs["prediction"]
+        # get prediction (from outputs or by sampling)
+        if outputs.get("prediction") is not None:
+            pred_norm = outputs["prediction"]  # [B,1,H,W]
         else:
-            sample = pl_module.sample(condition[0:s])
+            pred_norm = pl_module.sample(condition[:s])  # [B,1,H,W]
 
-        # --- visualize per-bin input channels ---
-        img = condition[0].detach().cpu().numpy()  # [C,H,W]
-        vis = float_to_uint8_nbin(img)
+        # 2) save per‐bin uint8 condition images for sample 0
+        cond_dir = os.path.join(run_dir, "condition")
+        os.makedirs(cond_dir, exist_ok=True)
 
-        # print stats
-        for b in range(img.shape[0]):
-            channel = img[b]
-            nz = np.count_nonzero(channel)
-            total = channel.size
-            unique = np.unique(channel)
-            print(
-                f"[float] Bin {b}: min={channel.min():.4f}, max={channel.max():.4f}, sum={channel.sum():.4f}, nonzero={nz}/{total}, unique_sample={unique[:5]}{'...' if unique.size > 5 else ''}")
-            if nz > 0:
-                coords = np.argwhere(channel != 0)
-                sample_vals = [float(channel[tuple(c)]) for c in coords[:5]]
-                print(f"    sample nonzero coords: {coords[:5].tolist()[:5]} values: {sample_vals}")
-            uchannel = vis[b]
-            unique_u = np.unique(uchannel)
-            print(
-                f"[uint8] Bin {b}: min={int(uchannel.min())}, max={int(uchannel.max())}, unique_sample={unique_u[:5]}{'...' if unique_u.size > 5 else ''}")
-        if np.count_nonzero(img) == 0:
-            print("WARNING: ENTIRE IMAGE IS ZERO")
+        all_bins = []
+        for i in range(B):
+            arr = condition[i].detach().cpu().numpy()  # [C,H,W]
+            vis = float_to_uint8_nbin(arr)  # [C,H,W]
+            for b in range(C):
+                all_bins.append(vis[b])  # each [H,W]
+        # stack into tensor [B*C, 1, H, W]
+        cond_vis_t = torch.from_numpy(np.stack(all_bins)).unsqueeze(1)
+        # grid: C columns, B rows
+        cond_grid = make_grid(cond_vis_t, nrow=C, normalize=False)[0]  # [H*B, W*C]
+        plt.imsave(
+            os.path.join(cond_dir, "all_bins_grid.png"),
+            cond_grid.numpy(),
+            cmap="gray",
+            vmin=0,
+            vmax=255
+        )
 
-        # save input bins
-        fig, axs = plt.subplots(vis.shape[0], 1, figsize=(6, 2 * vis.shape[0]))
-        for b in range(vis.shape[0]):
-            ax = axs[b] if vis.shape[0] > 1 else axs
-            im = ax.imshow(vis[b], cmap="gray", vmin=0, vmax=255, aspect="auto")
-            ax.set_title(f"Bin {b}")
-            ax.axis("off")
-            fig.colorbar(im, ax=ax, fraction=0.046, pad=0.01)
-        plt.tight_layout()
-        fig.savefig(os.path.join(save_dir, "input_bins.png"), bbox_inches="tight", pad_inches=0)
-        plt.close(fig)
-        # … your code that denormalizes to raw_pred / raw_gt, but keep them as torch.Tensor …
-        raw_pred = self.depth_transformer.denormalize(sample[0:1])[0, 0].detach().cpu()
-        raw_gt = self.depth_transformer.denormalize(gt[0:1])[0, 0].detach().cpu()# -Inf → amin_vis
-
-        # display‐range in meters
-        amin_vis, amax_vis = 5.0, 100.0
-
+        # 3) denormalize & clamp to [5,250]m, then map to [0,1]
+        amin_vis, amax_vis = 5.0, 150.0
+        raw_gt = self.depth_transformer.denormalize(gt_norm)[:, 0]
         raw_gt = torch.nan_to_num(raw_gt,
-                                  nan=amax_vis,  # clamp NaNs to amax_vis
-                                  posinf=amax_vis,  # +Inf → amax_vis
-                                  neginf=amin_vis)
+                                  nan=amax_vis, posinf=amax_vis, neginf=amin_vis)
+        raw_pred = self.depth_transformer.denormalize(pred_norm)[:, 0]
 
-        # 1) apply your log‐invert & normalize helper *on the tensor*:
-        vis_pred = map_depth_for_vis(raw_pred, amax=amax_vis, amin=amin_vis)
-        vis_gt = map_depth_for_vis(raw_gt, amax=amax_vis, amin=amin_vis)
+        vis_gt = map_depth_for_vis(raw_gt, amin=amin_vis, amax=amax_vis)  # [B,H,W]
+        vis_pred = map_depth_for_vis(raw_pred, amin=amin_vis, amax=amax_vis)
 
-        # 2) Build a valid‐mask: finite & non‐NaN & non‐Inf
-        valid_mask = torch.isfinite(raw_gt)
+        # 4) compute metrics on sample 0
+        # valid0 = torch.isfinite(raw_gt[0])
+        # p0, g0 = raw_pred[0][valid0], raw_gt[0][valid0]
+        # if p0.numel() > 0:
+        #     mae0 = (p0 - g0).abs().mean().item()
+        #     mse0 = ((p0 - g0) ** 2).mean().item()
+        #     rmse0 = mse0 ** 0.5
+        # else:
+        #     mae0 = mse0 = rmse0 = float('nan')
+        # print(f"[TestVisCallback] Sample0 → MAE={mae0:.3f}m, RMSE={rmse0:.3f}m")
 
-        # 3) Optionally also exclude zeros or out‐of‐range:
-        # valid_mask &= (raw_gt > 0.0)
+        # 5) build 2×B grid: top=Prediction, bottom=GT, with shared colorbar
+        comp_dir = os.path.join(run_dir, "comparison")
+        os.makedirs(comp_dir, exist_ok=True)
 
-        # 4) Gather only valid pixels
-        pred_vals = raw_pred[valid_mask]
-        gt_vals = raw_gt[valid_mask]
+        # 5) build comparison figure: 2 rows, B image columns + 1 colorbar column
+        comp_dir = os.path.join(run_dir, "comparison")
+        os.makedirs(comp_dir, exist_ok=True)
 
-        # 5) Compute metrics
-        if pred_vals.numel() > 0:
-            mae = torch.mean(torch.abs(pred_vals - gt_vals)).item()
-            mse = torch.mean((pred_vals - gt_vals) ** 2).item()
-            abs_err = torch.abs(pred_vals - gt_vals)  # per-pixel if you need the full map
-        else:
-            mae = mse = float('nan')
+        # create figure with (2 rows x (B+1) columns)
+        fig = plt.figure(figsize=(4 * (B + 1), 8))
+        gs = fig.add_gridspec(
+            2, B + 1,
+            width_ratios=[*([1] * B), 0.05],
+            wspace=0.1, hspace=0.15
+        )
 
-        print(f"[TestVisCallback]   MAE over valid pixels = {mae:.4f} m")
-        print(f"[TestVisCallback]   MSE over valid pixels = {mse:.4f} (m²)")
-        # if you want RMSE:
-        print(f"[TestVisCallback]   RMSE = {mse ** 0.5:.4f} m")
+        # meter ticks
+        meter_ticks = torch.tensor([5.0, 10.0, 20.0, 50.0, 100.0, 150])
+        tick_locs = map_depth_for_vis(meter_ticks, amin=amin_vis, amax=amax_vis).numpy()
 
-        for name, vis_img in [("Prediction", vis_pred), ("Ground Truth", vis_gt)]:
-            fig, ax = plt.subplots(figsize=(6, 5))
-            # 2) plot the already‐normalized image with vmin/vmax=(0,1)
-            im = ax.imshow(vis_img.numpy(), cmap="magma", vmin=0, vmax=1)
-            ax.set_title(name)
+        # row 0: Predictions
+        for i in range(B):
+            ax = fig.add_subplot(gs[0, i])
+            ax.imshow(vis_pred[i].cpu().numpy(), cmap="magma", vmin=0, vmax=1)
             ax.axis("off")
+            if i == 0:
+                ax.set_ylabel("Prediction", fontsize=12)
 
-            # 3) build a colorbar whose tick‐labels are in meters
-            cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-            cbar.set_label("Depth (m)")
+        cax0 = fig.add_subplot(gs[0, B])
+        cbar0 = fig.colorbar(
+            plt.cm.ScalarMappable(norm=plt.Normalize(0, 1), cmap="magma"),
+            cax=cax0, orientation="vertical"
+        )
+        cbar0.set_ticks(tick_locs)
+        cbar0.set_ticklabels([f"{int(m)}m" for m in meter_ticks])
+        cbar0.set_label("Depth (m)", rotation=90, labelpad=8)
 
-            # pick the real‐world depths you want labeled
-            # meter_ticks = torch.tensor([5.0, 20.0, 40.0, 80.0, 160.0, 500.0, 1000.0])
-            meter_ticks = torch.tensor([5.0, 10.0, 20.0, 40.0, 80.0, 100.0])
+        # row 1: Ground Truth
+        for i in range(B):
+            ax = fig.add_subplot(gs[1, i])
+            ax.imshow(vis_gt[i].cpu().numpy(), cmap="magma", vmin=0, vmax=1)
+            ax.axis("off")
+            if i == 0:
+                ax.set_ylabel("Ground Truth", fontsize=12)
 
-            # remap them into [0,1] via the same helper
-            tick_positions = map_depth_for_vis(meter_ticks, amax=amax_vis, amin=amin_vis).numpy()
+        cax1 = fig.add_subplot(gs[1, B])
+        cbar1 = fig.colorbar(
+            plt.cm.ScalarMappable(norm=plt.Normalize(0, 1), cmap="magma"),
+            cax=cax1, orientation="vertical"
+        )
+        cbar1.set_ticks(tick_locs)
+        cbar1.set_ticklabels([f"{int(m)}m" for m in meter_ticks])
+        cbar1.set_label("Depth (m)", rotation=90, labelpad=8)
 
-            cbar.set_ticks(tick_positions)
-            cbar.set_ticklabels([f"{int(m)}" for m in meter_ticks])
+        # save and close
+        fig.savefig(
+            os.path.join(comp_dir, "batch0_pred_vs_gt.png"),
+            bbox_inches="tight", pad_inches=0
+        )
+        plt.close(fig)
 
-            fig.savefig(os.path.join(save_dir, f"{name.replace(' ', '_').lower()}.png"),
-                        bbox_inches="tight", pad_inches=0)
-            plt.close(fig)
+        print(f"[TestVisCallback] Saved condition grid and comparison under {run_dir}")
 
-        print(f"[TestVisCallback] wrote enhanced log‐invert plots to {save_dir}")
         # # --- save prediction and ground truth separately with shared colorbar ---
         # # denormalize
         # pred_metric = self.depth_transformer.denormalize(sample[0:1])[0, 0].detach().cpu().numpy()
