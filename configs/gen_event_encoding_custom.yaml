@@ -1,0 +1,21 @@
+# @package _global_
+
+defaults:
+  - data: time_encodings
+  - paths: default
+  - optional local: default
+  - _self_
+
+# parent directory that houses events.txt or npy files within its subdir
+base_dir: /scratch/shared/data/output/
+# directory to save the encoded event frames
+save_dir: /shared/ad150/data/output/events_encoded/
+# directory containing the event images (will scan all scene directories)
+event_dir: events/ # events subdirectory in each scene
+npy: true # whether the events are in npy format (we have npz files)
+height: 720 # height of the output image (detected from your dataset)
+width: 1280 # width of the output image (detected from your dataset)
+time_encoding: N_BINS_5 # Time encoding to use for the events
+vmin: null # 0 # minimum value to keep in the event set
+vmax: null # 0.04 # maximum value to keep in the event set
+interval_vmax: null # 0.04 # interval time to normalize the time to 
