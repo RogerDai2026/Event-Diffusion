@@ -22,9 +22,16 @@ task_name: "eval"
 tags: ["dev"]
 
 
+# regression checkpoint
+#ckpt_path: /home/qd8/models/Event-WassDiff/2025-07-19_19-32-22/Event-WassDiff/zgd9kflv/checkpoints/epoch=33-step=115634.ckpt
+
+# WassDiff checkpoint
 #ckpt_path: /home/qd8/models/Event-WassDiff/2025-07-25_20-04-10/checkpoints/last.ckpt
 #ckpt_path: /home/qd8/models/Event-WassDiff/2025-08-05_15-49-46/checkpoints/last.ckpt
-ckpt_path: /home/qd8/models/Event-WassDiff/2025-08-06_16-28-54/checkpoints/last.ckpt
+#ckpt_path: /home/qd8/models/Event-WassDiff/2025-08-06_16-28-54/checkpoints/last.ckpt #scale too large
+#ckpt_path: /home/qd8/models/Event-WassDiff/2025-08-07_01-41-35/checkpoints/last.ckpt
+#ckpt_path: /home/qd8/models/Event-WassDiff/2025-08-06_16-27-15/checkpoints/last.ckpt
+ckpt_path: /home/qd8/models/Event-WassDiff/2025-08-07_01-41-35/checkpoints/last.ckpt
 name: null
 
 #### passing checkpoint path is necessary for evaluation

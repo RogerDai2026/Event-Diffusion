@@ -3,7 +3,8 @@ import tifffile
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-
+import numpy as np
+import pickle
 
 def float_to_uint8_nbin(arr: np.ndarray) -> np.ndarray:
     """
@@ -23,19 +24,25 @@ def float_to_uint8_nbin(arr: np.ndarray) -> np.ndarray:
 
 
 def main():
-    path = '/shared/ad150/event3d/MVSEC/mvsec_outdoor_day1/events/voxels/event_tensor_0000003562.npy'
+    path = '/shared/qd8/event3d/MVSEC/outdoor_day2_vox5/0000000039.npz'
     dst_dir = "/shared/qd8/event3d/MVSEC/"
     os.makedirs(dst_dir, exist_ok=True)
-    dst_tif = os.path.join(dst_dir, "event_tensor_0000003562_nbin5.tif")
+    dst_tif = os.path.join(dst_dir, "event_tensor_0000003562.tif")
 
-    img = np.load(path)
+    # stack into shape [N, nbin, H, W]:
+    # img = tifffile.imread(path)
+    # img = np.load(path)
+
+    with np.load(path, allow_pickle=False) as f:
+        print(f.files)  # -> ['vox']
+        img = f["vox"]  # numpy array
     print("Loaded:", path)
     print("Shape:", img.shape, "dtype:", img.dtype)
-
+    #
     # convert to uint8 for visualization
     vis = float_to_uint8_nbin(img)  # shape (nbin, H, W), uint8
 
-    tifffile.imwrite(dst_tif, vis, bigtiff=True)
+    # tifffile.imwrite(dst_tif, vis, bigtiff=True)
     # print(f"Saved converted NBIN image to {dst_tif}")
 
     # Per-bin stats (on original floats and after scaling)
@@ -58,7 +65,7 @@ def main():
         print("WARNING: ENTIRE IMAGE IS ZERO")
 
     # Visualization
-    fig, axs = plt.subplots(vis.shape[0], 1, figsize=(6, 2 * vis.shape[0]))
+    fig, axs = plt.subplots(vis.shape[0], 1, figsize=(4, 2 * vis.shape[0]))
     for b in range(vis.shape[0]):
         ax = axs[b] if vis.shape[0] > 1 else axs
         im = ax.imshow(vis[b], cmap="gray", vmin=0, vmax=255, aspect="auto")
