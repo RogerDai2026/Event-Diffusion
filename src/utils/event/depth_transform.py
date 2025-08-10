@@ -51,10 +51,13 @@ def get_depth_normalizer(cfg_normalizer):
             max_depth=cfg_normalizer.max_depth,
             log_depth=True,
         )
+    elif "e2d_depth" == cfg_normalizer.type:  # E2Depth-style
+        d_min = getattr(cfg_normalizer, "d_min", 2.0)
+        d_max = getattr(cfg_normalizer, "max_depth", 80.0)
+        return Event2DepthLogNormalizer(d_min=d_min, d_max=d_max)
     else:
         raise NotImplementedError
     return depth_transform
-
 
 class DepthNormalizerBase:
     is_absolute = None
@@ -238,3 +241,36 @@ class ScaleShiftDepthNormalizer(DepthNormalizerBase):
         # Recover metric depth
         Dm = D_max * torch.exp(-alpha * (1.0 - hat_D))
         return Dm
+
+# Add this class next to your other normalizers
+class Event2DepthLogNormalizer(DepthNormalizerBase):
+    """
+    E2Depth log-depth target (fixed constants, output in [0, 1]).
+    Paper: D^m = D_max * exp(-alpha * (1 - D_hat)),
+           with D_max = 80 m, alpha = 3.7 (i.e., D_min ≈ 2 m).
+    """
+    def __init__(self, d_min: float = 2.0, d_max: float = 80.0):
+        self.norm_min = 0.0
+        self.norm_max = 1.0
+        self.norm_range = 1.0
+        self.is_absolute = True
+        self.d_min = float(d_min)
+        self.d_max = float(d_max)
+        # fixed alpha per paper (equivalently: -ln(d_min/d_max))
+        self.alpha = float(-np.log(self.d_min / self.d_max + 1e-12))
+
+    def __call__(self, depth, valid_mask=None, clip=True):
+        eps = 1e-6
+        if valid_mask is None:
+            valid_mask = (depth > 0)
+        # clamp to [d_min, d_max] as in the paper’s intent
+        d = torch.clamp(depth, min=self.d_min, max=self.d_max)
+        # hat_D in [0,1]
+        hat = 1.0 + (1.0 / self.alpha) * torch.log(d / self.d_max + eps)
+        hat = torch.clamp(hat, 0.0, 1.0)
+        return hat  # already [0,1], no extra scaling
+
+    def denormalize(self, hat_D_norm, **kwargs):
+        # hat_D already in [0,1]
+        hat = torch.clamp(hat_D_norm, 0.0, 1.0)
+        return self.d_max * torch.exp(-self.alpha * (1.0 - hat))

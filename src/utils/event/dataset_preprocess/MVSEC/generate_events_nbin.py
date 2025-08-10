@@ -145,12 +145,12 @@ def read_depth_arrays(dgrp):
 
 def main():
     ap = argparse.ArgumentParser("Export MVSEC events (x,y,t,p) and depth (separate NPZs), aligned per frame.")
-    ap.add_argument("--data-h5", default="/shared/qd8/event3d/MVSEC/hdf5/outdoor_day/outdoor_day2_data.hdf5")
-    ap.add_argument("--gt-h5",   default="/shared/qd8/event3d/MVSEC/hdf5/outdoor_day/outdoor_day2_gt.hdf5")
+    ap.add_argument("--data-h5", default="/shared/qd8/event3d/MVSEC/hdf5/outdoor_day/outdoor_day1_data.hdf5")
+    ap.add_argument("--gt-h5",   default="/shared/qd8/event3d/MVSEC/hdf5/outdoor_day/outdoor_day1_gt.hdf5")
     ap.add_argument("--side",    choices=["left", "right"], default="left",
                     help="DAVIS side to use. MVSEC canonical frame is LEFT; default is left.")
-    ap.add_argument("--events-out", default="/shared/qd8/event3d/MVSEC/outdoor_day2_events/left")
-    ap.add_argument("--depth-out",  default="/shared/qd8/event3d/MVSEC/outdoor_day2_depth/left")
+    ap.add_argument("--events-out", default="/shared/qd8/event3d/MVSEC/outdoor_day1_events/left")
+    ap.add_argument("--depth-out",  default="/shared/qd8/event3d/MVSEC/outdoor_day1_depth/left")
     ap.add_argument("--mode",    choices=["centered", "between"], default="centered",
                     help="centered: [t_k-Δ/2, t_k+Δ/2); between: (t_{k-1}, t_k]")
     ap.add_argument("--window-ms", type=float, default=50.0, help="Window length for centered mode (ms)")

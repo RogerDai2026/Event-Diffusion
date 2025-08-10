@@ -90,8 +90,8 @@ class EventLogger(GenericLogger):
         gt_vis = map_depth_for_vis(gt_metric, amin=5, amax=250)
 
         # 4) make the float grids
-        sample_grid = make_grid(sample_vis, nrow=s, normalize=True)[0].detach().cpu().numpy()  # [H, W]
-        gt_grid = make_grid(gt_vis, nrow=s, normalize=True)[0].detach().cpu().numpy()
+        sample_grid = make_grid(sample_vis, nrow=s, normalize=False)[0].detach().cpu().numpy()  # [H, W]
+        gt_grid = make_grid(gt_vis, nrow=s, normalize=False)[0].detach().cpu().numpy()
 
         # 5) pick your meter ticks and their normalized locations
         meter_ticks = torch.tensor([5.0, 10.0, 20.0, 50.0, 100.0, 250.0])
@@ -103,7 +103,7 @@ class EventLogger(GenericLogger):
         gs = fig.add_gridspec(3, 2, width_ratios=[1, 0.01], wspace=0.01)
         ax0 = fig.add_subplot(gs[0, 0])
         # show RGB event condition, with gray=0, white=+1, black=-1
-        im0 = ax0.imshow(condition_grid, cmap='gray', vmin=-1, vmax=1, aspect='auto')
+        im0 = ax0.imshow(condition_grid, cmap='gray', aspect='auto')
         ax0.set_title('Condition')
         ax0.axis('off')
         # colorbar for condition
@@ -112,7 +112,6 @@ class EventLogger(GenericLogger):
         cbar0.set_label('Event polarity')
         cbar0.set_ticks([-1.0, 0.0, 1.0])
         cbar0.set_ticklabels(['-', '0', '+'])
-        cbar0.set_label('Normalized value')
 
         # --- Prediction row ---
         ax1 = fig.add_subplot(gs[1, 0])
@@ -226,7 +225,7 @@ class EventLogger(GenericLogger):
         )
 
         # 3) denormalize & clamp to [5,250]m, then map to [0,1]
-        amin_vis, amax_vis = 5.0, 150.0
+        amin_vis, amax_vis = 2.0, 150.0
         raw_gt = self.depth_transformer.denormalize(gt_norm)[:, 0]
         raw_gt = torch.nan_to_num(raw_gt,
                                   nan=amax_vis, posinf=amax_vis, neginf=amin_vis)
@@ -263,7 +262,7 @@ class EventLogger(GenericLogger):
         )
 
         # meter ticks
-        meter_ticks = torch.tensor([5.0, 10.0, 20.0, 50.0, 100.0, 150])
+        meter_ticks = torch.tensor([5.0, 10.0, 20.0, 50.0, 80.0, 150.0])
         tick_locs = map_depth_for_vis(meter_ticks, amin=amin_vis, amax=amax_vis).numpy()
 
         # row 0: Predictions
@@ -309,100 +308,6 @@ class EventLogger(GenericLogger):
 
         print(f"[TestVisCallback] Saved condition grid and comparison under {run_dir}")
 
-        # # --- save prediction and ground truth separately with shared colorbar ---
-        # # denormalize
-        # pred_metric = self.depth_transformer.denormalize(sample[0:1])[0, 0].detach().cpu().numpy()
-        # pred_metric =  map_depth_for_vis(pred_metric, amin=5, amax = 80)
-        #
-        # gt_metric = self.depth_transformer.denormalize(gt[0:1])[0, 0].detach().cpu().numpy()
-        # gt_metric =  map_depth_for_vis(gt_metric, amin=5, amax = 80)
-        #
-        # # use fixed range or dynamic across both
-        # amin, amax = 2, 80
-        #
-        # norm = Normalize(vmin=amin, vmax=amax)
-        # cmap = plt.get_cmap('magma')
-        #
-        # # prediction
-        # fig, ax = plt.subplots(figsize=(6, 5))
-        # im = ax.imshow(pred_metric, cmap=cmap, norm=norm)
-        # ax.set_title('Prediction')
-        # ax.axis('off')
-        # fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-        # fig.savefig(os.path.join(save_dir, 'prediction.png'), bbox_inches='tight', pad_inches=0)
-        # plt.close(fig)
-        #
-        # # ground truth
-        # fig, ax = plt.subplots(figsize=(6, 5))
-        # im = ax.imshow(gt_metric, cmap=cmap, norm=norm)
-        # ax.set_title('Ground Truth')
-        # ax.axis('off')
-        # fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-        # fig.savefig(os.path.join(save_dir, 'ground_truth.png'), bbox_inches='tight', pad_inches=0)
-        # plt.close(fig)
-        #
-        # print(f"[TestVisCallback] Saved input_bins.png, prediction.png, ground_truth.png to {save_dir}")
-
-        # save_dir = "/home/qd8/eval"
-        # os.makedirs(save_dir, exist_ok=True)
-        #
-        # condition = outputs["condition"]  # [B, C, H, W]
-        # batch_dict = outputs["batch_dict"]
-        # gt = batch_dict["depth_raw_norm"]  # [B,1,H,W]
-        # s = self.sampling_batch_size
-        #
-        # if "prediction" in outputs and outputs["prediction"] is not None:
-        #     sample = outputs["prediction"]
-        # else:
-        #     sample = pl_module.sample(condition[0:s])  # [s, ...] prediction
-        #
-        # # ---- condition: only first 3 bins as RGB ----
-        # cond_subset = condition[0:s]
-        # C = cond_subset.shape[1]
-        # if C >= 3:
-        #     cond_rgb = cond_subset[:, :3]  # take first three bins
-        # elif C == 1:
-        #     cond_rgb = cond_subset.repeat(1, 3, 1, 1)
-        # else:
-        #     # pad to 3 channels if 2
-        #     pad = torch.zeros_like(cond_subset[:, : (3 - C), :, :])
-        #     cond_rgb = torch.cat([cond_subset, pad], dim=1)
-        # condition_grid = make_grid(cond_rgb.detach().cpu(), nrow=s, normalize=True)
-        # # convert to HWC
-        # condition_grid = condition_grid.permute(1, 2, 0).numpy()
-        #
-        # # ---- sample / prediction ----
-        # sample_metric = self.depth_transformer.denormalize(sample[0:s])
-        # sample_vis = map_depth_for_vis(sample_metric, amin=5, amax=25000)
-        # sample_grid = make_grid(sample_vis, nrow=s, normalize=True)[0, :, :]
-        # sample_grid_cm = cm_(sample_grid.detach().cpu(), "magma")
-        # if sample_grid_cm.shape[-1] == 4:
-        #     sample_grid_cm = sample_grid_cm[..., :3]
-        #
-        # # ---- ground truth ----
-        # gt_metric = self.depth_transformer.denormalize(gt[0:s])
-        # gt_grid= make_grid(gt_metric, nrow=s, normalize=True)
-        # gt_grid_np = gt_grid.permute(1, 2, 0).numpy()
-        # # [H, s*W]
-        # # gt_grid_cm = cm_(gt_grid.detach().cpu(), "magma")
-        # # if sample_grid_cm.shape[-1] == 4:
-        # #     sample_grid_cm = sample_grid_cm[..., :3]
-        #
-        # # put 3 grids in one plt image, row by row
-        # fig, axs = plt.subplots(3, 1, figsize=(s * 5, 15))
-        # axs[0].imshow(condition_grid)
-        # axs[1].imshow(sample_grid_cm)
-        # axs[2].imshow(gt_grid_np)
-        # for ax in axs:
-        #     ax.set_xticks([])
-        #     ax.set_yticks([])
-        # plt.tight_layout()
-        #
-        # out_path = os.path.join(save_dir, f"vis_1.png")
-        # fig.savefig(out_path, bbox_inches="tight", pad_inches=0)
-        # plt.close(fig)
-        # print(f"[TestVisCallback] Saved visualization to {out_path}")
-
     def visualize_batch(self, **kwargs):
         vis_param = {
             # 'rgb_int': None,
@@ -427,7 +332,7 @@ class EventLogger(GenericLogger):
             if 'depth_raw_norm' == k:
                 grid_mono = self.depth_transformer.denormalize(grid_mono)
             if 'depth' in k:
-                grid_mono = map_depth_for_vis(grid_mono, amin=5, amax=25000)
+                grid_mono = map_depth_for_vis(grid_mono, amin=5, amax=250)
             if vis_param[k] is None:
                 images = wandb.Image(grid, caption=k)
             else:
@@ -440,10 +345,13 @@ class EventLogger(GenericLogger):
 ############################ STATIC METHODS ############################
 
 def map_depth_for_vis(img, amax, amin=None):
-    img_temp = torch.clip(img, min=amin, max=amax)
-    img_temp = torch.log(1/img_temp)
-    img_temp = (img_temp - img_temp.min())/torch.abs(img_temp.max() - img_temp.min())
-    return img_temp
+    if amin is None:
+        amin = 5.0
+    d = torch.clip(img, min=float(amin), max=float(amax))
+    v = torch.log(torch.as_tensor(amax, device=d.device, dtype=d.dtype) / (d))
+    denom = max(np.log(float(amax) / float(amin)), 1e-12)
+    out = v / denom                     # shared scale for given (amin, amax)
+    return torch.clamp(out, 0.0, 1.0)
 
 
 
