@@ -162,7 +162,9 @@ class BaseDepthDataset(Dataset):
     def _load_rgb_data(self, rgb_rel_path):
         # Read RGB data
         rgb = self._read_rgb_file(rgb_rel_path)
-        rgb_norm = rgb / 255.0 * 2.0 - 1.0  #  [0, 255] -> [-1, 1]
+        # Note: For mvsec and new nbin encoding, comment this out
+        # rgb_norm = rgb / 255.0 * 2.0 - 1.0  #  [0, 255] -> [-1, 1]
+        rgb_norm = rgb
 
         outputs = {
             "rgb_int": torch.from_numpy(rgb).int(),

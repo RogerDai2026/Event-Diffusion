@@ -48,8 +48,8 @@ class MVSECDataset(BaseDepthDataset):
         """Override to handle custom file paths directly from filename pairs"""
         filename_line = self.filenames[index]
         # The filenames should be direct paths to event and depth files
-        event_rel_path = filename_line[0]  # events/dvs_scene51_frame_003416.tiffle
-        depth_rel_path = filename_line[1]  # depth/depth_scene51_frame_003418.png
+        event_rel_path = filename_line[0]
+        depth_rel_path = filename_line[1]
 
         return event_rel_path, depth_rel_path, None
 
