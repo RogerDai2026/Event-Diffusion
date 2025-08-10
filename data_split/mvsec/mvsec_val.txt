@@ -1,5 +1,0 @@
-outdoor_day1_val/encoded_full/VAE_ROBUST/left/event_frame_00004.tif outdoor_day1_val/depth/data/depth_0000000004.npy
-outdoor_day1_val/encoded_full/VAE_ROBUST/left/event_frame_00001.tif outdoor_day1_val/depth/data/depth_0000000001.npy
-outdoor_day1_val/encoded_full/VAE_ROBUST/left/event_frame_00005.tif outdoor_day1_val/depth/data/depth_0000000005.npy
-outdoor_day1_val/encoded_full/VAE_ROBUST/left/event_frame_00003.tif outdoor_day1_val/depth/data/depth_0000000003.npy
-outdoor_day1_val/encoded_full/VAE_ROBUST/left/event_frame_00002.tif outdoor_day1_val/depth/data/depth_0000000002.npy

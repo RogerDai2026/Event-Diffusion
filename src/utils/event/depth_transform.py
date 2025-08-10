@@ -106,7 +106,7 @@ class ScaleShiftDepthNormalizer(DepthNormalizerBase):
         self.max_depth = max_depth
         self.inv_log = inv_log
         self.use_log_depth = log_depth
-        # self.far_plane_at_max = far_plane_at_max
+        self.far_plane_at_max = far_plane_at_max
 
     def __call__(self, depth_linear, valid_mask=None, clip=None):
         clip = clip if clip is not None else self.clip
@@ -242,7 +242,7 @@ class ScaleShiftDepthNormalizer(DepthNormalizerBase):
         Dm = D_max * torch.exp(-alpha * (1.0 - hat_D))
         return Dm
 
-# Add this class next to your other normalizers
+
 class Event2DepthLogNormalizer(DepthNormalizerBase):
     """
     E2Depth log-depth target (fixed constants, output in [0, 1]).
@@ -258,11 +258,16 @@ class Event2DepthLogNormalizer(DepthNormalizerBase):
         self.d_max = float(d_max)
         # fixed alpha per paper (equivalently: -ln(d_min/d_max))
         self.alpha = float(-np.log(self.d_min / self.d_max + 1e-12))
+        self.far_plane_at_max = True  # <-- tell dataset far==1.0
 
     def __call__(self, depth, valid_mask=None, clip=True):
-        eps = 1e-6
-        if valid_mask is None:
-            valid_mask = (depth > 0)
+        eps = 1e-12
+        d = depth.clone()
+
+        if valid_mask is not None:
+            # send invalids to far plane so log is finite & they map to 1.0
+            d = torch.where(valid_mask, d, torch.as_tensor(self.d_max, device=d.device, dtype=d.dtype))
+
         # clamp to [d_min, d_max] as in the paper’s intent
         d = torch.clamp(depth, min=self.d_min, max=self.d_max)
         # hat_D in [0,1]
