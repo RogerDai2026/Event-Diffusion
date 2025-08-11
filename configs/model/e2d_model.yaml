@@ -1,0 +1,30 @@
+# configs/models/e2vid.yaml
+_target_: src.models.baselines.cnn.E2DepthLitModule.E2DDepthLitModule
+compile: false
+
+net:
+  _target_: src.utils.event2depth_utils.model.model.E2VIDRecurrent
+  config:
+    num_bins: 5
+    skip_type: sum
+    num_encoders: 4
+    base_num_channels: 32
+    num_residual_blocks: 2
+    norm: null
+    use_upsample_conv: true
+    recurrent_block_type: convlstm
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 2e-4
+  betas: [0.9, 0.999]
+  eps: 1e-8
+
+criterion:
+  _target_: src.utils.event2depth_utils.e2d_loss.E2DPaperLoss
+  w_si: 1.0
+  w_grad: 0.5
+  si_lambda: 1.0
+  grad_scales: 4
+

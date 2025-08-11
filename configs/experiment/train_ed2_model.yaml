@@ -1,0 +1,43 @@
+# @package _global_
+defaults:
+  - override /model: e2d_model
+  - override /data: mvsec_e2d
+  - _self_
+
+
+logger:
+  wandb:
+    project: "Event-WassDiff"
+    name: 'CorrDiff Regression'
+
+trainer:
+  max_epochs: 300
+  check_val_every_n_epoch: 5
+
+
+data:
+  batch_size: 20
+  num_workers: 20
+
+
+callbacks:
+  log_event_data:
+    _target_: src.utils.callbacks.event_wandb_logger.EventLogger
+    # ───────────────────────────────────────────────────────
+    # how often to log training images
+    train_log_img_freq: 1
+    # how often to log training scalar metrics
+    train_log_score_freq: 10
+    # how often to snapshot + save a checkpoint (-1 to disable)
+    train_ckpt_freq: -1
+    sampling_batch_size: 8
+  model_checkpoint:
+    dirpath: ${paths.output_dir}/checkpoints
+    filename: "epoch_{epoch:03d}"
+    monitor: "val/loss"
+    mode: "min"
+    save_last: true
+    auto_insert_metric_name: false
+    save_top_k: 3 # save k best models (determined by above metric)
+  #  every_n_train_steps: 5000
+    every_n_epochs: 10

@@ -86,16 +86,18 @@ class EventLogger(GenericLogger):
         gt_metric = self.depth_transformer.denormalize(gt[0:s])
 
         # 3) log‐invert → [0,1]
-        sample_vis = map_depth_for_vis(sample_metric, amin=5, amax=250)  # torch [B,1,H,W]
-        gt_vis = map_depth_for_vis(gt_metric, amin=5, amax=250)
+        eval_min = 2
+        eval_max = 80
+        sample_vis = map_depth_for_vis(sample_metric, amin=eval_min , amax=eval_max)  # torch [B,1,H,W]
+        gt_vis = map_depth_for_vis(gt_metric, amin=eval_min , amax=eval_max)
 
         # 4) make the float grids
         sample_grid = make_grid(sample_vis, nrow=s, normalize=False)[0].detach().cpu().numpy()  # [H, W]
         gt_grid = make_grid(gt_vis, nrow=s, normalize=False)[0].detach().cpu().numpy()
 
         # 5) pick your meter ticks and their normalized locations
-        meter_ticks = torch.tensor([5.0, 10.0, 20.0, 50.0, 100.0, 250.0])
-        tick_locs = map_depth_for_vis(meter_ticks, amax=250.0, amin=5.0).numpy()
+        meter_ticks = torch.tensor([2.0, 5.0, 10.0, 20.0, 40.0, 80.0])
+        tick_locs = map_depth_for_vis(meter_ticks, amin=eval_min , amax=eval_max).numpy()
 
         # 3) now build a 3×2 layout so col0 is images, col1 is colorbars:
         fig = plt.figure(figsize=(s * 7, 18))
@@ -225,7 +227,7 @@ class EventLogger(GenericLogger):
         )
 
         # 3) denormalize & clamp to [5,250]m, then map to [0,1]
-        amin_vis, amax_vis = 2.0, 150.0
+        amin_vis, amax_vis = 2.0, 80.0
         raw_gt = self.depth_transformer.denormalize(gt_norm)[:, 0]
         raw_gt = torch.nan_to_num(raw_gt,
                                   nan=amax_vis, posinf=amax_vis, neginf=amin_vis)
@@ -262,22 +264,21 @@ class EventLogger(GenericLogger):
         )
 
         # meter ticks
-        meter_ticks = torch.tensor([5.0, 10.0, 20.0, 50.0, 80.0, 150.0])
+        meter_ticks = torch.tensor([5.0, 10.0, 20.0, 50.0, 80.0])
         tick_locs = map_depth_for_vis(meter_ticks, amin=amin_vis, amax=amax_vis).numpy()
 
         # row 0: Predictions
         for i in range(B):
             ax = fig.add_subplot(gs[0, i])
-            ax.imshow(vis_pred[i].cpu().numpy(), cmap="magma", vmin=0, vmax=1)
+            im= ax.imshow(vis_pred[i].cpu().numpy(), cmap="magma", vmin=0, vmax=1)
+            if i == 0:
+                mappable_pred = im  # keep the first tile's mappable
             ax.axis("off")
             if i == 0:
                 ax.set_ylabel("Prediction", fontsize=12)
 
         cax0 = fig.add_subplot(gs[0, B])
-        cbar0 = fig.colorbar(
-            plt.cm.ScalarMappable(norm=plt.Normalize(0, 1), cmap="magma"),
-            cax=cax0, orientation="vertical"
-        )
+        cbar0 = fig.colorbar(mappable_pred, cax=cax0, orientation="vertical")
         cbar0.set_ticks(tick_locs)
         cbar0.set_ticklabels([f"{int(m)}m" for m in meter_ticks])
         cbar0.set_label("Depth (m)", rotation=90, labelpad=8)
@@ -285,16 +286,15 @@ class EventLogger(GenericLogger):
         # row 1: Ground Truth
         for i in range(B):
             ax = fig.add_subplot(gs[1, i])
-            ax.imshow(vis_gt[i].cpu().numpy(), cmap="magma", vmin=0, vmax=1)
+            im2 = ax.imshow(vis_gt[i].cpu().numpy(), cmap="magma", vmin=0, vmax=1)
+            if i == 0:
+                mappable_pred2 = im2  # keep the first tile's mappable
             ax.axis("off")
             if i == 0:
                 ax.set_ylabel("Ground Truth", fontsize=12)
 
         cax1 = fig.add_subplot(gs[1, B])
-        cbar1 = fig.colorbar(
-            plt.cm.ScalarMappable(norm=plt.Normalize(0, 1), cmap="magma"),
-            cax=cax1, orientation="vertical"
-        )
+        cbar1 = fig.colorbar(mappable_pred2, cax=cax1, orientation="vertical")
         cbar1.set_ticks(tick_locs)
         cbar1.set_ticklabels([f"{int(m)}m" for m in meter_ticks])
         cbar1.set_label("Depth (m)", rotation=90, labelpad=8)
@@ -350,8 +350,9 @@ def map_depth_for_vis(img, amax, amin=None):
     d = torch.clip(img, min=float(amin), max=float(amax))
     v = torch.log(torch.as_tensor(amax, device=d.device, dtype=d.dtype) / (d))
     denom = max(np.log(float(amax) / float(amin)), 1e-12)
-    out = v / denom                     # shared scale for given (amin, amax)
-    return torch.clamp(out, 0.0, 1.0)
+    out = v / denom
+    out = torch.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)# shared scale for given (amin, amax)
+    return out
 
 
 

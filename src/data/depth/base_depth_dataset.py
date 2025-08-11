@@ -124,7 +124,7 @@ class BaseDepthDataset(Dataset):
         except Exception as e:
             print(f"Error loading data at index {index}: {e}")
             raise e  # Re-raise the exception instead of continuing
-        
+
         # if DatasetMode.TRAIN == self.mode: #or DatasetMode.EVAL == self.mode:
         rasters = self._training_preprocess(rasters)
         # merge
@@ -175,15 +175,13 @@ class BaseDepthDataset(Dataset):
     def _load_depth_data(self, depth_rel_path, filled_rel_path):
         # Read depth data
         outputs = {}
-        depth_raw = self._read_depth_file(depth_rel_path).squeeze()
-        depth_raw = np.nan_to_num(depth_raw, nan=self.max_depth, posinf=self.max_depth, neginf=self.min_depth)
-        depth_raw_linear = torch.from_numpy(depth_raw).float().unsqueeze(0)  # [1, H, W]
+        depth_raw = self._read_depth_file(depth_rel_path).squeeze().astype(np.float32)
+        depth_raw_linear = torch.from_numpy(depth_raw).unsqueeze(0)  # [1,H,W]
         outputs["depth_raw_linear"] = depth_raw_linear.clone()
 
         if self.has_filled_depth:
-            depth_filled = self._read_depth_file(filled_rel_path).squeeze()
-            depth_filled_linear = torch.from_numpy(depth_filled).float().unsqueeze(0)
-            depth_filled_linear = np.nan_to_num(depth_filled_linear, nan=self.max_depth, posinf=self.max_depth, neginf=self.min_depth)
+            depth_filled = self._read_depth_file(filled_rel_path).squeeze().astype(np.float32)
+            depth_filled_linear = torch.from_numpy(depth_filled).unsqueeze(0)
             outputs["depth_filled_linear"] = depth_filled_linear
         else:
             outputs["depth_filled_linear"] = depth_raw_linear.clone()
@@ -239,13 +237,20 @@ class BaseDepthDataset(Dataset):
 
         return depth_decoded
 
+
+    #question?
     def _get_valid_mask(self, depth: torch.Tensor):
-        valid_mask = torch.logical_and(
-            # maybe can (depth >= self.min_depth) & (depth <= self.max_depth), this helps to count those valid pixels in stats
-            torch.logical_and(depth >= self.min_depth, depth <= self.max_depth),
-            ~torch.isnan(depth)
-        ).bool()
-        return valid_mask
+        is_finite = torch.isfinite(depth)
+        in_range = (depth >= self.min_depth) & (depth <= self.max_depth)
+        return (is_finite & in_range).bool()
+
+    # def _get_valid_mask(self, depth: torch.Tensor):
+    #     valid_mask = torch.logical_and(
+    #         # maybe can (depth >= self.min_depth) & (depth <= self.max_depth), this helps to count those valid pixels in stats
+    #         torch.logical_and(depth >= self.min_depth, depth <= self.max_depth),
+    #         ~torch.isnan(depth)
+    #     ).bool()
+    #     return valid_mask
 
     def _training_preprocess(self, rasters):
         # Augmentation

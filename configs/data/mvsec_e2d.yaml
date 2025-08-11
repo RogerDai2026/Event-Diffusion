@@ -1,0 +1,64 @@
+# Complete data configuration embedded directly
+
+_target_: src.data.event_datamodule.EventDataModule
+batch_size: 4  # Use batch size 1 for evaluation
+num_workers: 4  # Reduce workers for evaluation
+pin_memory: true
+seed: 51
+
+data_config:
+    # Base data directory
+  base_dir: /shared/qd8/event3d/MVSEC/
+  encoding_mode: mvsec
+  num_input_chs: 5
+
+  # Training dataset config (required for setup, but won't be used in evaluation)
+  train:
+    name: mvsec
+    disp_name: mvsec_train
+    dir: ""
+    filenames: /home/qd8/code/Event-WassDiff/data_split/mvsec/train.txt
+#    resize_to_hw:
+#      - 260
+#      - 346
+
+    # Validation dataset config (required for setup, but won't be used in evaluation)
+  val:
+    name: mvsec
+    disp_name: mvsec_val
+    dir: ""
+    filenames: /home/qd8/code/Event-WassDiff/data_split/mvsec/val.txt
+#    resize_to_hw:
+#      - 260
+#      - 346
+
+    # Test dataset config (this is what will be used for evaluation)
+  test:
+    name: mvsec
+    disp_name: mvsec_test
+    dir: ""
+#     filenames: /home/qd8/code/Event-WassDiff/data_split/carla_nbins_5/pairs.txt
+    filenames: /home/qd8/code/Event-WassDiff/data_split/mvsec/test.txt
+#    resize_to_hw:
+#      - 260
+#      - 346
+    # IO arguments
+  io_args:
+    read_event_via: default
+
+  # Augmentation arguments
+augmentation_args:
+    lr_flip_p: 0.5
+    # random_crop_hw: [256, 352]  # Commented out for evaluation
+
+  # Depth transform arguments
+#depth_transform_args:
+#    type: reversible_normalization
+#    clip: true
+#    norm_min: -1.0
+#    norm_max: 1.0
+#    min_max_quantile: 0.02
+#    max_depth: 250.0
+#
+depth_transform_args:
+    type: e2d_depth
