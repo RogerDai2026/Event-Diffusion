@@ -19,9 +19,9 @@ from pathlib import Path
 import re
 import numpy as np
 
-TRAIN_N = 8523
-VAL_N   = 1826
-TEST_N  = 1826
+TRAIN_N = 5429
+VAL_N   = 0
+TEST_N  = 0
 
 def numeric_stem(p: Path) -> int:
     m = re.match(r"^0*(\d+)$", p.stem)
@@ -29,9 +29,9 @@ def numeric_stem(p: Path) -> int:
 
 def main():
     ap = argparse.ArgumentParser("MVSEC outdoor_day2 split (NPZ → train/val/test)")
-    ap.add_argument("--vox-dir",   default="/shared/qd8/event3d/MVSEC/outdoor_day2_vox5",
+    ap.add_argument("--vox-dir",   default="/shared/qd8/event3d/MVSEC/outdoor_night3_vox5",
                     help="Directory containing voxel NPZs (key 'vox').")
-    ap.add_argument("--depth-dir", default="/shared/qd8/event3d/MVSEC/outdoor_day2_depth/left",
+    ap.add_argument("--depth-dir", default="/shared/qd8/event3d/MVSEC/outdoor_night3_depth/left",
                     help="Directory containing depth NPZs (key 'depth').")
     ap.add_argument("--out-dir",   default="/home/qd8/code/Event-WassDiff/data_split/mvsec",
                     help="Where to write train.txt / val.txt / test.txt")
@@ -91,11 +91,11 @@ def main():
                 f.write(f"{vox_by_stem[s].resolve()} {depth_by_stem[s].resolve()}\n")
         return fpath
 
-    f_train = write_list(stems_train, "train")
-    f_val   = write_list(stems_val,   "val")
-    f_test  = write_list(stems_test,  "test")
+    f_train = write_list(stems_train, "outdoor_night3_testing")
+    # f_val   = write_list(stems_val,   "val_1")
+    # f_test  = write_list(stems_test,  "test_1")
 
-    print(f"[done] wrote:\n  {f_train}\n  {f_val}\n  {f_test}")
+    # print(f"[done] wrote:\n  {f_train}\n  {f_val}\n  {f_test}")
     print(f"[info] counts: train={len(stems_train)} val={len(stems_val)} test={len(stems_test)} (total matched={len(stems)})")
 
 if __name__ == "__main__":

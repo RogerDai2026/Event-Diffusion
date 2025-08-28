@@ -360,14 +360,14 @@ class E2DPaperLoss(nn.Module):
 
         # --- scale-invariant on log-depth residuals (paper Eq. 3) ---
         si = scale_invariant_loss(
-            pred_hat[valid_mask],
-            gt_hat[valid_mask],
+            pred_hat,
+            gt_hat,
             weight=1.0,
             n_lambda=self.si_lambda
         )
 
-        # --- multi-scale gradient on residuals (paper Eq. 4); your helper zeros NaNs ---
-        # We pass pred and gt; the module computes gradients of (pred-gt) internally via subtraction.
+        # --- multi-scale gradient on residuals ( on paper, it says it's for valid gt and prediction,
+        # it has logic to remove nans in the function itself)
         grad = self.ms_grad(pred_hat, gt_hat, preview=False)
 
         total = self.w_si * si + self.w_grad * grad

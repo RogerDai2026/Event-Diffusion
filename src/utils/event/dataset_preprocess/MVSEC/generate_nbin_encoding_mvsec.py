@@ -207,9 +207,9 @@ def process_mvsec_event_frames(events_root: str,
 
 def main():
     ap = argparse.ArgumentParser("MVSEC voxel (NBIN=5) encoder — paper-accurate")
-    ap.add_argument("--events-root", default="/shared/qd8/event3d/MVSEC/outdoor_day1_events",
+    ap.add_argument("--events-root", default="/shared/qd8/event3d/MVSEC/outdoor_night3_events",
                     help="Root with <side>/*.npz, or point directly to the <side> folder.")
-    ap.add_argument("--output-root", default="/shared/qd8/event3d/MVSEC/outdoor_day2_vox5",
+    ap.add_argument("--output-root", default="/shared/qd8/event3d/MVSEC/outdoor_night3_vox5",
                     help="Where to write <same_name>.npz with key 'vox'")
     ap.add_argument("--side", choices=["left", "right"], default="left")
     ap.add_argument("--nbin", type=int, default=NBIN)
@@ -227,7 +227,7 @@ def main():
         nbin=args.nbin,
         overwrite=args.overwrite,
         normalize=(not args.no_normalize),
-        save_vis=args.save_vis
+        # save_vis=args.save_vis
     )
 
 
