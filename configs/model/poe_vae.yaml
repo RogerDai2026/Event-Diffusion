@@ -1,0 +1,35 @@
+# configs/model/poe_vae.yaml
+_target_: src.models.baselines.cnn.poe_module.PoEVAELitModule
+
+# point to your existing CompVis-style configs
+event_cfg_path: "src/utils/latent_diffusion/models/first_stage_models/kl-f4/config.yaml"
+depth_cfg_path: "src/utils/latent_diffusion/models/first_stage_models/kl-f4/config.yaml"
+
+# (optional) initialize decoders from your pretrained weights
+event_checkpoint_path: "/home/qd8/models/Event-WassDiff/2025-07-29_13-12-28/checkpoints/last.ckpt"
+depth_checkpoint_path: "/home/qd8/models/model.ckpt"
+
+allow_resize: true
+compile: false
+lr: 1.0e-4
+
+# PoE + KL
+use_prior_expert: true
+omega_precision: 0.8
+beta_kl_joint: 1.0e-6
+beta_kl_uni:   1.0e-6
+include_unimodal_terms: true
+
+# Loss shaping
+event_nll_weight: 1.5
+event_thresh: 0.5
+
+##wassertain distance
+#lambda_w2: 0.1
+#lambda_swd: 0.0
+
+# Optional freezes for staged alignment
+freeze_event_decoder: false
+freeze_depth_decoder: false
+freeze_event_encoder: false
+freeze_depth_encoder: false

@@ -86,8 +86,8 @@ class EventLogger(GenericLogger):
         gt_metric = self.depth_transformer.denormalize(gt[0:s])
 
         # 3) log‐invert → [0,1]
-        eval_min = 2
-        eval_max = 80
+        eval_min = 5
+        eval_max = 250
         sample_vis = map_depth_for_vis(sample_metric, amin=eval_min , amax=eval_max)  # torch [B,1,H,W]
         gt_vis = map_depth_for_vis(gt_metric, amin=eval_min , amax=eval_max)
 
@@ -96,7 +96,8 @@ class EventLogger(GenericLogger):
         gt_grid = make_grid(gt_vis, nrow=s, normalize=False)[0].detach().cpu().numpy()
 
         # 5) pick your meter ticks and their normalized locations
-        meter_ticks = torch.tensor([2.0, 5.0, 10.0, 20.0, 40.0, 80.0])
+        # meter_ticks = torch.tensor([2.0, 5.0, 10.0, 20.0, 40.0, 80.0])
+        meter_ticks = torch.tensor([5.0, 20.0, 80.0, 160.0, 250.0])
         tick_locs = map_depth_for_vis(meter_ticks, amin=eval_min , amax=eval_max).numpy()
 
         # 3) now build a 3×2 layout so col0 is images, col1 is colorbars:
@@ -255,58 +256,52 @@ class EventLogger(GenericLogger):
         comp_dir = os.path.join(run_dir, "comparison")
         os.makedirs(comp_dir, exist_ok=True)
 
-        # create figure with (2 rows x (B+1) columns)
-        fig = plt.figure(figsize=(4 * (B + 1), 8))
-        gs = fig.add_gridspec(
-            2, B + 1,
-            width_ratios=[*([1] * B), 0.05],
-            wspace=0.1, hspace=0.15
-        )
+        B_show = min(B, s)
 
-        # meter ticks
-        meter_ticks = torch.tensor([5.0, 10.0, 20.0, 50.0, 80.0])
+        # grids (no black borders)
+        pred_grid = make_grid(
+            vis_pred[:B_show].unsqueeze(1), nrow=B_show, normalize=False
+        )[0].cpu().numpy()
+        gt_grid = make_grid(
+            vis_gt[:B_show].unsqueeze(1), nrow=B_show, normalize=False
+        )[0].cpu().numpy()
+
+        # figure: 2 rows (Pred, GT) × 2 cols (image, thin colorbar)
+        fig = plt.figure(figsize=(B_show * 7, 12))
+        gs = fig.add_gridspec(2, 2, width_ratios=[1, 0.015], wspace=0.02, hspace=0.08)
+
+        # meter ticks (same as validation)
+        meter_ticks = torch.tensor([2.0, 5.0, 10.0, 20.0, 40.0, 80.0])
         tick_locs = map_depth_for_vis(meter_ticks, amin=amin_vis, amax=amax_vis).numpy()
+        tick_labels = [f"{int(m)}" for m in meter_ticks]
 
-        # row 0: Predictions
-        for i in range(B):
-            ax = fig.add_subplot(gs[0, i])
-            im= ax.imshow(vis_pred[i].cpu().numpy(), cmap="magma", vmin=0, vmax=1)
-            if i == 0:
-                mappable_pred = im  # keep the first tile's mappable
-            ax.axis("off")
-            if i == 0:
-                ax.set_ylabel("Prediction", fontsize=12)
+        # Row 0: Prediction + its own colorbar (same normalization)
+        ax0 = fig.add_subplot(gs[0, 0])
+        im0 = ax0.imshow(pred_grid, cmap="magma", vmin=0, vmax=1, aspect="auto")
+        ax0.set_title("Prediction");
+        ax0.axis("off")
+        cax0 = fig.add_subplot(gs[0, 1])
+        cb0 = fig.colorbar(im0, cax=cax0, orientation="vertical")
+        cb0.set_label("Depth (m)")
+        cb0.set_ticks(tick_locs);
+        cb0.set_ticklabels(tick_labels)
 
-        cax0 = fig.add_subplot(gs[0, B])
-        cbar0 = fig.colorbar(mappable_pred, cax=cax0, orientation="vertical")
-        cbar0.set_ticks(tick_locs)
-        cbar0.set_ticklabels([f"{int(m)}m" for m in meter_ticks])
-        cbar0.set_label("Depth (m)", rotation=90, labelpad=8)
+        # Row 1: Ground Truth + its own colorbar (same normalization)
+        ax1 = fig.add_subplot(gs[1, 0])
+        im1 = ax1.imshow(gt_grid, cmap="magma", vmin=0, vmax=1, aspect="auto")
+        ax1.set_title("Ground Truth");
+        ax1.axis("off")
+        cax1 = fig.add_subplot(gs[1, 1])
+        cb1 = fig.colorbar(im1, cax=cax1, orientation="vertical")
+        cb1.set_label("Depth (m)")
+        cb1.set_ticks(tick_locs);
+        cb1.set_ticklabels(tick_labels)
 
-        # row 1: Ground Truth
-        for i in range(B):
-            ax = fig.add_subplot(gs[1, i])
-            im2 = ax.imshow(vis_gt[i].cpu().numpy(), cmap="magma", vmin=0, vmax=1)
-            if i == 0:
-                mappable_pred2 = im2  # keep the first tile's mappable
-            ax.axis("off")
-            if i == 0:
-                ax.set_ylabel("Ground Truth", fontsize=12)
-
-        cax1 = fig.add_subplot(gs[1, B])
-        cbar1 = fig.colorbar(mappable_pred2, cax=cax1, orientation="vertical")
-        cbar1.set_ticks(tick_locs)
-        cbar1.set_ticklabels([f"{int(m)}m" for m in meter_ticks])
-        cbar1.set_label("Depth (m)", rotation=90, labelpad=8)
-
-        # save and close
-        fig.savefig(
-            os.path.join(comp_dir, "batch0_pred_vs_gt.png"),
-            bbox_inches="tight", pad_inches=0
-        )
+        plt.tight_layout()
+        fig.savefig(os.path.join(comp_dir, "batch0_pred_gt_valstyle.png"),
+                    bbox_inches="tight", pad_inches=0)
         plt.close(fig)
 
-        print(f"[TestVisCallback] Saved condition grid and comparison under {run_dir}")
 
     def visualize_batch(self, **kwargs):
         vis_param = {
@@ -347,12 +342,20 @@ class EventLogger(GenericLogger):
 def map_depth_for_vis(img, amax, amin=None):
     if amin is None:
         amin = 5.0
+    img = torch.as_tensor(img)
+
+    # mark invalid: zeros, negatives, NaNs, ±inf
+    invalid = (img <= 0)
+
     d = torch.clip(img, min=float(amin), max=float(amax))
-    v = torch.log(torch.as_tensor(amax, device=d.device, dtype=d.dtype) / (d))
+    v = torch.log(torch.as_tensor(amax, device=d.device, dtype=d.dtype) / d)
     denom = max(np.log(float(amax) / float(amin)), 1e-12)
     out = v / denom
-    out = torch.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)# shared scale for given (amin, amax)
+    # out = torch.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)
+    # force invalids to 0 in the visualization
+    out[invalid] = 0.0
     return out
+
 
 
 

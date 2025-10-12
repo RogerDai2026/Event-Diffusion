@@ -19,7 +19,7 @@ from pathlib import Path
 import re
 import numpy as np
 
-TRAIN_N = 5429
+TRAIN_N = 200
 VAL_N   = 0
 TEST_N  = 0
 
@@ -29,11 +29,11 @@ def numeric_stem(p: Path) -> int:
 
 def main():
     ap = argparse.ArgumentParser("MVSEC outdoor_day2 split (NPZ → train/val/test)")
-    ap.add_argument("--vox-dir",   default="/shared/qd8/event3d/MVSEC/outdoor_night3_vox5",
+    ap.add_argument("--vox-dir",   default="/shared/qd8/event3d/MVSEC/outdoor_night1_old_nbin3",
                     help="Directory containing voxel NPZs (key 'vox').")
-    ap.add_argument("--depth-dir", default="/shared/qd8/event3d/MVSEC/outdoor_night3_depth/left",
+    ap.add_argument("--depth-dir", default="/shared/qd8/event3d/MVSEC/outdoor_night1_depth/left",
                     help="Directory containing depth NPZs (key 'depth').")
-    ap.add_argument("--out-dir",   default="/home/qd8/code/Event-WassDiff/data_split/mvsec",
+    ap.add_argument("--out-dir",   default="/home/qd8/code/Event-WassDiff/data_split/mvsec_old_nbin3_outdoornight1",
                     help="Where to write train.txt / val.txt / test.txt")
     ap.add_argument("--seed",      type=int, default=20240809,
                     help="Seed for the one-time random validation selection.")
@@ -46,7 +46,7 @@ def main():
     assert depth_dir.is_dir(), f"depth-dir not found: {depth_dir}"
 
     # Collect .npz and match by stem
-    vox_list   = sorted(vox_dir.glob("*.npz"),   key=numeric_stem)
+    vox_list   = sorted(vox_dir.glob("*.tif"),   key=numeric_stem)
     depth_list = sorted(depth_dir.glob("*.npz"), key=numeric_stem)
 
     vox_by_stem   = {p.stem: p for p in vox_list}
@@ -91,9 +91,9 @@ def main():
                 f.write(f"{vox_by_stem[s].resolve()} {depth_by_stem[s].resolve()}\n")
         return fpath
 
-    f_train = write_list(stems_train, "outdoor_night3_testing")
-    # f_val   = write_list(stems_val,   "val_1")
-    # f_test  = write_list(stems_test,  "test_1")
+    f_train = write_list(stems_train, "train")
+    # f_val   = write_list(stems_val,   "val")
+    # f_test  = write_list(stems_test,  "test")
 
     # print(f"[done] wrote:\n  {f_train}\n  {f_val}\n  {f_test}")
     print(f"[info] counts: train={len(stems_train)} val={len(stems_val)} test={len(stems_test)} (total matched={len(stems)})")

@@ -14,33 +14,33 @@ data_config:
     disp_name: custom_train
     dir: ""
     filenames: /home/qd8/code/Event-WassDiff/data_split/custom/custom_train.txt
-    resize_to_hw:
-      - 256
-      - 352
+#    resize_to_hw:
+#      - 256
+#      - 352
   val:
     name: custom
     disp_name: custom_val
     dir: ""
     filenames: /home/qd8/code/Event-WassDiff/data_split/custom/custom_val_small.txt  # Use small file for faster validation
-    resize_to_hw:
-      - 256
-      - 352
+#    resize_to_hw:
+#      - 256
+#      - 352
   test:
     name: custom
     disp_name: test_val
     dir: ""
     filenames: /home/qd8/code/Event-WassDiff/data_split/custom_nbins/custom_test_small.txt  # Use small file for faster validation
-    resize_to_hw:
-      - 256
-      - 352
+#    resize_to_hw:
+#      - 256
+#      - 352
 
   io_args:
     read_event_via: default
 
 augmentation_args:
     lr_flip_p: 0.5
-#    random_crop_hw: [256, 256]
-#
+    random_crop_hw: [256, 256]
+
 depth_transform_args:
   type: reversible_normalization
   clip: true

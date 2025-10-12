@@ -40,13 +40,13 @@ BASE_DIR = Path("/shared/qd8/event3d/MVSEC").expanduser()
 BAGS_DIR = BASE_DIR  # bags are directly in BASE_DIR
 
 SEQUENCES = [
-    # {
-    #     "name": "outdoor_night2",
-    #     "data_bag": BAGS_DIR / "outdoor_night2_data.bag",
-    #     "gt_bag":   BAGS_DIR / "outdoor_night2_gt.bag",
-    #     "events_out": BASE_DIR / "outdoor_night2_events" / "left",
-    #     "depth_out":  BASE_DIR / "outdoor_night2_depth" / "left",
-    # },
+    {
+        "name": "outdoor_night2",
+        "data_bag": BAGS_DIR / "outdoor_night2_data.bag",
+        "gt_bag":   BAGS_DIR / "outdoor_night2_gt.bag",
+        "events_out": BASE_DIR / "outdoor_night2_events" / "left",
+        "depth_out":  BASE_DIR / "outdoor_night2_depth" / "left",
+    },
     {
         "name": "outdoor_night3",
         "data_bag": BAGS_DIR / "outdoor_night3_data.bag",
@@ -110,7 +110,13 @@ def to_int8_pol(p: np.ndarray, scheme: str = POL_SCHEME) -> np.ndarray:
     p = np.asarray(p)
     if p.dtype == np.bool_:
         p = p.astype(np.int8)
-        return (2 * p - 1).astype(np.int8) if scheme == "pm1" else p
+        if scheme == "pm1":
+            return (2 * p - 1).astype(np.int8)  # False→-1, True→+1
+        elif scheme == "01":
+            return p  # False→0, True→1
+        else:  # zmp1 (default)
+            return (2 * p - 1).astype(np.int8)  # False→-1, True→+1
+    
     p = p.astype(np.int8, copy=False)
     if scheme == "pm1":
         if np.min(p) >= 0:

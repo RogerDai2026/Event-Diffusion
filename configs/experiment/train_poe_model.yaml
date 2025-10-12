@@ -1,0 +1,46 @@
+# @package _global_
+defaults:
+  - override /model: poe_vae
+  - override /data: multi_dataset_example
+  - _self_
+
+trainer:
+  max_epochs: 500
+  check_val_every_n_epoch: 1
+
+logger:
+  wandb:
+    project: "VAE"
+    name: "Train_poe"
+
+data:
+  batch_size: 8
+  num_workers: 8
+
+callbacks:
+  # logs reconstructions via POELogger (which inherits GenericLogger)
+  log_vae:
+    _target_: src.utils.callbacks.poe_logger.PoELogger
+    train_log_img_freq: 1
+    train_log_score_freq: -1
+    train_ckpt_freq: -1
+    show_samples_at_start: true
+    sampling_batch_size: 8
+
+#  stats_logger:
+#    _target_: src.utils.callbacks.stats_logger.ForwardStatsLogger
+#    log_every_n_batches: 1   # e.g., every 5 val batches
+#    phase: "val"
+
+
+
+  model_checkpoint:
+    dirpath: ${paths.output_dir}/vae_checkpoints
+    filename: "vae_epoch{epoch:03d}-val{val/depth_rec_loss:.4f}"
+    monitor: "val/event_mae"
+    mode: "min"
+    save_top_k: 3
+    save_last: true
+
+
+

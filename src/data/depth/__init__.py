@@ -34,6 +34,7 @@ from .carla_dataset import CarlaDataset
 from .mvsec_dataset import MVSECDataset
 from .custom_dataset import CustomDataset
 from .cached_latent_dataset import CachedLatentDepthDataset
+from .dsec_dataset import DSECDataset
 
 
 dataset_name_class_dict = {
@@ -48,6 +49,7 @@ dataset_name_class_dict = {
     "mvsec": MVSECDataset,
     "custom": CustomDataset,
     "latent": CachedLatentDepthDataset,
+    "dsec": DSECDataset,
 }
 
 

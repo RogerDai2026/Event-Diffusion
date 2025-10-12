@@ -25,14 +25,23 @@ tags: ["dev"]
 # regression checkpoint
 #ckpt_path: /home/qd8/models/Event-WassDiff/2025-07-19_19-32-22/Event-WassDiff/zgd9kflv/checkpoints/epoch=33-step=115634.ckpt
 
+# E2D checkpoint
+#ckpt_path: /home/qd8/models/Event-WassDiff/2025-08-11_02-56-54/Event-WassDiff/4g9tpvf9/checkpoints/epoch=299-step=128100.ckpt
+
 # WassDiff checkpoint
 #ckpt_path: /home/qd8/models/Event-WassDiff/2025-07-25_20-04-10/checkpoints/last.ckpt
 #ckpt_path: /home/qd8/models/Event-WassDiff/2025-08-05_15-49-46/checkpoints/last.ckpt
 #ckpt_path: /home/qd8/models/Event-WassDiff/2025-08-06_16-28-54/checkpoints/last.ckpt #scale too large
 #ckpt_path: /home/qd8/models/Event-WassDiff/2025-08-07_01-41-35/checkpoints/last.ckpt
 #ckpt_path: /home/qd8/models/Event-WassDiff/2025-08-06_16-27-15/checkpoints/last.ckpt
-ckpt_path: /home/qd8/models/Event-WassDiff/2025-08-07_01-41-35/checkpoints/last.ckpt
+#ckpt_path: /home/qd8/models/Event-WassDiff/2025-08-07_01-41-35/checkpoints/last.ckpt
 name: null
+
+
+# Poe checkpoint
+#ckpt_path: /home/qd8/models/Event-WassDiff/2025-10-02_01-13-58/checkpoints/last.ckpt
+ckpt_path: /home/qd8/models/Event-WassDiff/2025-10-05_01-49-20/checkpoints/last.ckpt #finetune on dsec
+
 
 #### passing checkpoint path is necessary for evaluation
 ## WassDiff

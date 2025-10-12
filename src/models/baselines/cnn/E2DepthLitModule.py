@@ -10,7 +10,14 @@ from src.utils.event2depth_utils.model.metric import (
     abs_rel_diff as e2d_abs_rel,
     squ_rel_diff as e2d_sq_rel,
     rms_linear as e2d_rmse,
-    scale_invariant_error as e2d_silog,
+    delta_125  as delta_1,
+    delta_125_2 as delta_2,
+    delta_125_3 as delta_3,
+    rmse_log as e2d_rmse_log,
+    scale_invariant_log as e2d_si_log,
+    abs_err_10m as abs_10,
+    abs_err_20m as abs_20,
+    abs_err_30m as abs_30,
     mean_error as e2d_mean_err,
     median_error as e2d_median_err,
 )
@@ -62,7 +69,8 @@ class E2DDepthLitModule(GenericE2DModule):
     # ---------- metrics accumulation ---------
     def _reset_metric_sums(self):
         self._metric_sums = {k: 0.0 for k in
-            ["abs_rel", "sq_rel", "rmse", "silog", "mean_err", "median_err"]}
+            ["abs_rel", "sq_rel", "rmse", "rmse_log", "si_log", "delta_1", "delta_2", "delta_3", "abs_10", "abs_20","abs_30"]}
+        # "mean_err", "median_err"
         self._metric_count = 0
 
     def _to_eval_numpy(self, hat_norm: torch.Tensor) -> np.ndarray:
@@ -80,9 +88,16 @@ class E2DDepthLitModule(GenericE2DModule):
             self._metric_sums["abs_rel"]    += float(e2d_abs_rel(p, g))
             self._metric_sums["sq_rel"]     += float(e2d_sq_rel(p, g))
             self._metric_sums["rmse"]       += float(e2d_rmse(p, g))
-            self._metric_sums["silog"]      += float(e2d_silog(p, g))
-            self._metric_sums["mean_err"]   += float(e2d_mean_err(p, g))
-            self._metric_sums["median_err"] += float(e2d_median_err(p, g))
+            self._metric_sums["rmse_log"]   += float(e2d_rmse_log(p, g))
+            self._metric_sums["si_log"]     += float(e2d_si_log(p, g))
+            self._metric_sums["delta_1"]    += float(delta_1(p, g))
+            self._metric_sums["delta_2"]    += float(delta_2(p, g))
+            self._metric_sums["delta_3"]    += float(delta_3(p, g))
+            self._metric_sums["abs_10"]     += float(abs_10(p, g))
+            self._metric_sums["abs_20"]     += float(abs_20(p, g))
+            self._metric_sums["abs_30"]     += float(abs_30(p, g))
+            # self._metric_sums["mean_err"]   += float(e2d_mean_err(p, g))
+            # self._metric_sums["median_err"] += float(e2d_median_err(p, g))
             self._metric_count += 1
 
     def _finalize_and_log_metrics(self, prefix: str):
@@ -96,16 +111,14 @@ class E2DDepthLitModule(GenericE2DModule):
 
 
     # ---------- utils ----------
-    def _pad_to_multiple(self, x: torch.Tensor) -> Tuple[torch.Tensor, Tuple[int,int,int,int]]:
-        # x: [B,C,H,W]; returns padded tensor and (left,right,top,bottom) pad tuple
-        _, _, H, W = x.shape
+    def _pad_to_multiple(self, x):
+        B, C, H, W = x.shape
         m = self.pad_multiple
         pad_h = (m - H % m) % m
         pad_w = (m - W % m) % m
         if pad_h == 0 and pad_w == 0:
             return x, (0, 0, 0, 0)
-        # F.pad takes (left, right, top, bottom)
-        x_pad = F.pad(x, (0, pad_w, 0, pad_h), mode="constant", value=0.0)
+        x_pad = F.pad(x, (0, pad_w, 0, pad_h), mode="reflect")
         return x_pad, (0, pad_w, 0, pad_h)
 
     def _unpad(self, x: torch.Tensor, pad: Tuple[int,int,int,int]) -> torch.Tensor:
@@ -131,12 +144,11 @@ class E2DDepthLitModule(GenericE2DModule):
         return {"optimizer": optim}
 
     # ---------- forward / sample ----------
-    def _forward_padded(self, cond: torch.Tensor, prev_states: Optional[Any] = None) -> torch.Tensor:
+    def _forward_padded(self, cond, prev_states=None):
         cond_pad, pad = self._pad_to_multiple(cond)
-        # both E2VID and E2VIDRecurrent accept (x, prev_states)
         out = self.net(cond_pad, prev_states)
         if isinstance(out, tuple):
-            out = out[0]  # (pred, states) -> pred
+            out = out[0]
         out = self._unpad(out, pad)
         return out
 
@@ -144,22 +156,12 @@ class E2DDepthLitModule(GenericE2DModule):
         return self._forward_padded(event, prev_states)
 
     def sample(self, condition: torch.Tensor) -> torch.Tensor:
-        with torch.no_grad():
-            return self._forward_padded(condition, None)
+        return self._forward_padded(condition, None)
 
     # ---------- loss ----------
     def _compute_loss(self, pred: torch.Tensor, gt: torch.Tensor, cond: torch.Tensor, valid_mask: torch.Tensor) -> torch.Tensor:
         loss, _ = self.criterion(pred, gt, None, valid_mask)
         return loss
-        # try:
-        #     loss, _ = self.criterion(prediction=pred, target=gt, voxel=None, valid_mask=valid_mask)
-        #     return loss
-        # except TypeError:
-        #     try:
-        #         loss, _ = self.criterion(net=self.net, img_clean=gt, img_lr=cond)
-        #         return loss
-        #     except TypeError:
-        #         return F.l1_loss(pred, gt)
 
     # ---------- steps ----------
     def training_step(self, batch: Dict[str, torch.Tensor], batch_idx: int):
@@ -197,8 +199,7 @@ class E2DDepthLitModule(GenericE2DModule):
     def test_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> Dict[str, Any]:
         batch = self._fill_missing_keys(batch)
         cond, gt = self._generate_condition(batch)
-        with torch.no_grad():
-            pred = self.sample(cond)
+        pred = self.sample(cond)
         self._update_metrics_from_batch(pred_hat=pred, gt_hat=gt)
         return {"batch_dict": batch, "condition": cond}
 

@@ -25,6 +25,7 @@ class EventWassDiffLitModule(LightningModule):
 
     def __init__(self, model_config: dict, optimizer_config: dict,
                  compile: bool, num_samples: int = 1, pytorch_ckpt_path: Optional[str] = None,
+                 use_spatial_masking: bool = False,  # Enable NaN masking for real datasets
                  *args, **kwargs) -> None:
         """Initialize a `WassDiffLitModule`.
 
@@ -39,6 +40,7 @@ class EventWassDiffLitModule(LightningModule):
         self.save_hyperparameters(logger=False, ignore=("model_config", "optimizer_config"))
         self.model_config = model_config
         self.optimizer_config = optimizer_config
+        self.use_spatial_masking = use_spatial_masking  # Store the masking flag
 
         # TODO defined loss function and metrics
 
@@ -199,10 +201,22 @@ class EventWassDiffLitModule(LightningModule):
         :return: A tensor of losses between model predictions and targets.
         """
         # batch_dict, _ = batch  # discard coordinates
+        batch = self._fill_missing_keys(batch)
         condition, gt = self._generate_condition(batch)
+        
+        # Get valid mask for proper loss masking
+        valid_mask = batch.get("valid_mask_raw", None)
+
+        # Actually apply the mask BEFORE loss computation
+        if valid_mask is not None and self.use_spatial_masking:
+            # Replace invalid pixels with a reasonable value
+            gt = torch.where(valid_mask, gt, torch.tensor(0.0, device=gt.device))
+
         condition, context_mask = self._dropout_condition(condition)
+        
         loss, loss_dict = self.train_step_fn(self.state, gt, condition)
 
+                
         self.log("train/loss", loss, on_step=True, on_epoch=False, prog_bar=False, batch_size=condition.shape[0])
         if self.use_emd:
             self.log("train/emd_loss", loss_dict['emd_loss'], on_step=True, on_epoch=False, prog_bar=False,
@@ -222,8 +236,21 @@ class EventWassDiffLitModule(LightningModule):
         """
         # batch_dict, _ = batch  # discard coordinates
         batch = self._fill_missing_keys(batch)
+        
+        # Get valid mask for consistency with training
+        valid_mask = batch.get("valid_mask_raw", None)
+
         condition, gt = self._generate_condition(batch)
+
+
+        # Actually apply the mask BEFORE loss computation
+        if valid_mask is not None and self.use_spatial_masking:
+            # Replace invalid pixels with a reasonable value
+            gt = torch.where(valid_mask, gt, torch.tensor(0.0, device=gt.device))
+
+
         eval_loss, _ = self.eval_step_fn(self.state, gt, condition)
+                
         self.log("val/loss", eval_loss, on_step=False, on_epoch=True, prog_bar=False,
                  batch_size=condition.shape[0], sync_dist=True)
         step_output = {"batch_dict": batch, "condition": condition}
@@ -303,7 +330,8 @@ class EventWassDiffLitModule(LightningModule):
 
     def _generate_condition(self, batch_dict: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         condition = self.scaler(batch_dict['rgb_norm'])  # .to(config.device))
-        y = batch_dict['depth_raw_norm']
+        ##TODO: original depth_raw_norm
+        y = batch_dict['depth_raw_linear']
         return condition, y
 
         # if self.model_config.data.condition_mode == 0:

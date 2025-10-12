@@ -1,0 +1,106 @@
+# Example configuration for multi-dataset training
+# This shows how to configure multiple datasets (MVSEC + DSEC) for cyclic training
+
+_target_: src.data.multi_event_datamodule.MultiEventDataModule
+
+# Dataset configurations
+datasets:
+#  - name: "mvsec"
+#    base_dir: "/shared/qd8/event3d/MVSEC/"
+#    encoding_mode: "mvsec"
+#    num_input_chs: 3
+#    train:
+#      name: mvsec
+#      disp_name: mvsec_train
+#      dir: ""
+#      filenames: "/home/qd8/code/Event-WassDiff/data_split/mvsec_old_nbin3_outdoorday2/train.txt"
+#    val:
+#      name: mvsec
+#      disp_name: mvsec_val
+#      dir: ""
+#      filenames: "/home/qd8/code/Event-WassDiff/data_split/mvsec_old_nbin3_outdoorday2/val.txt"
+#    test:
+#      name: mvsec
+#      disp_name: mvsec_test
+#      dir: ""
+#      filenames: "/home/qd8/code/Event-WassDiff/data_split/mvsec_old_nbin3_outdoorday2/test.txt"
+#    io_args:
+#      read_event_via: default
+#
+  # - name: custom
+  #   base_dir: "/shared/qd8/data/output/"
+  #   encoding_mode: "custom_nbins_3"
+  #   num_input_chs: 3
+  #   train:
+  #     name: custom
+  #     disp_name: custom_train
+  #     dir: ""
+  #     filenames: "/home/qd8/code/Event-WassDiff/data_split/custom_nbin3/custom_train.txt"
+  #   val:
+  #     name: custom
+  #     disp_name: custom_val
+  #     dir: ""
+  #     filenames: "/home/qd8/code/Event-WassDiff/data_split/custom_nbin3/custom_val_small.txt"
+  #   test:
+  #     name: custom
+  #     disp_name: custom_test
+  #     dir: ""
+  #     filenames: "/home/qd8/code/Event-WassDiff/data_split/custom_nbins/custom_test_small.txt"
+  #   io_args:
+  #     read_event_via: "tifffile"
+  
+  - name: "dsec"
+    base_dir: "/shared/qd8/event3d/DSEC/train/"
+    encoding_mode: "dsec_nbin3"
+    num_input_chs: 3
+    train:
+      name: dsec
+      disp_name: dsec_train
+      dir: ""
+      filenames: "/home/qd8/code/Event-WassDiff/data_split/dsec_nbin3/train.txt"
+      resize_to_hw:
+        - 480
+        - 640
+    val:
+      name: dsec
+      disp_name: dsec_val
+      dir: ""
+      filenames: "/home/qd8/code/Event-WassDiff/data_split/dsec_nbin3/val.txt"
+      resize_to_hw:
+        - 480
+        - 640
+    test:
+      name: dsec
+      disp_name: dsec_test
+      dir: ""
+      filenames: "/home/qd8/code/Event-WassDiff/data_split/dsec_nbin3/test.txt"
+      resize_to_hw:
+        - 480
+        - 640
+    io_args:
+      read_event_via: default
+
+# Validation/test behavior
+val_mode: "cycle"    # "concat" or "cycle" - how to handle multiple val datasets
+test_mode: "cycle"   # "concat" or "cycle" - how to handle multiple test datasets
+
+# Standard dataloader parameters
+batch_size: 1
+num_workers: 1
+pin_memory: true
+seed: 42
+
+# Augmentation args (shared across all datasets)
+augmentation_args:
+  lr_flip_p: 0.5
+  random_crop_hw: [256, 256]
+
+# Depth transform args (shared across all datasets)  
+depth_transform_args:
+  type: "reversible_normalization"
+  clip: true
+  norm_min: -1.0
+  norm_max: 1.0
+  min_max_quantile: 0.02
+  max_depth: 250.0
+

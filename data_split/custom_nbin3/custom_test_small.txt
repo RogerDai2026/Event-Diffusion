@@ -1,0 +1,2 @@
+/shared/qd8/event3d/MVSEC/outdoor_night1_old_nbin3/0000000023.tif /shared/qd8/event3d/MVSEC/outdoor_night1_depth/left/0000000023.npz
+/shared/qd8/event3d/MVSEC/outdoor_night1_old_nbin3/0000000193.tif /shared/qd8/event3d/MVSEC/outdoor_day2_depth/left/0000000011.npz

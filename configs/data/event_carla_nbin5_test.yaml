@@ -1,8 +1,8 @@
 # Complete data configuration embedded directly
 
 _target_: src.data.event_datamodule.EventDataModule
-batch_size: 4  # Use batch size 1 for evaluation
-num_workers: 4  # Reduce workers for evaluation
+batch_size: 3  # Use batch size 1 for evaluation
+num_workers: 3 # Reduce workers for evaluation
 pin_memory: true
 seed: 51
 
@@ -17,46 +17,54 @@ data_config:
     name: custom
     disp_name: custom_train
     dir: ""
-    filenames: /home/qd8/code/Event-WassDiff/data_split/custom/custom_train.txt
-    resize_to_hw:
-      - 256
-      - 352
+    filenames: /home/qd8/code/Event-WassDiff/data_split/custom_nbin3/custom_test_small.txt
+#    resize_to_hw:
+#      - 256
+#      - 352
 
     # Validation dataset config (required for setup, but won't be used in evaluation)
   val:
     name: custom
     disp_name: custom_val
     dir: ""
-    filenames: /home/qd8/code/Event-WassDiff/data_split/custom/custom_val_small.txt
-    resize_to_hw:
-      - 256
-      - 352
+    filenames: /home/qd8/code/Event-WassDiff/data_split/custom_nbin3/custom_test_small.txt
+#    resize_to_hw:
+#      - 256
+#      - 352
 
     # Test dataset config (this is what will be used for evaluation)
+#  test:
+#    name: mvsec
+#    disp_name: carla_test
+#    dir: ""
+#    filenames: /home/qd8/code/Event-WassDiff/data_split/custom_nbin3/custom_test_small.txt
   test:
     name: mvsec
     disp_name: carla_test
     dir: ""
-#     filenames: /home/qd8/code/Event-WassDiff/data_split/carla_nbins_5/pairs.txt
-    filenames: /home/qd8/code/Event-WassDiff/data_split/mvsec/eval.txt
-    resize_to_hw:
-      - 256
-      - 352
+#    filenames: /home/qd8/code/Event-WassDiff/data_split/custom_nbin3/custom_test_small.txt
+    filenames: /home/qd8/code/Event-WassDiff/data_split/mvsec/outdoor_night3_testing.txt
+#    resize_to_hw:
+#      - 256
+#      - 352
 
     # IO arguments
   io_args:
-    read_event_via: 'tifffile'
+    read_event_via: default
 
   # Augmentation arguments
 augmentation_args:
     lr_flip_p: 0.5
-    # random_crop_hw: [256, 352]  # Commented out for evaluation
+#    random_crop_hw: [256, 256]  # Commented out for evaluation
 
   # Depth transform arguments
+#depth_transform_args:
+#    type: reversible_normalization
+#    clip: true
+#    norm_min: -1.0
+#    norm_max: 1.0
+#    min_max_quantile: 0.02
+#    max_depth: 250.0
+#
 depth_transform_args:
-    type: reversible_normalization
-    clip: true
-    norm_min: -1.0
-    norm_max: 1.0
-    min_max_quantile: 0.02
-    max_depth: 250.0
+    type: e2d_depth

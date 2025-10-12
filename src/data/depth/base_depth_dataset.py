@@ -75,6 +75,7 @@ class BaseDepthDataset(Dataset):
         move_invalid_to_far_plane: bool = True,
         rgb_transform=lambda x: x / 255.0 * 2 - 1,  #  [0, 255] -> [-1, 1],
         io_args: Optional[dict] = None,
+        clean_nans_for_diffusion: bool = True,  # New parameter for diffusion models
         **kwargs,
     ) -> None:
         super().__init__()
@@ -97,6 +98,7 @@ class BaseDepthDataset(Dataset):
         self.resize_to_hw = resize_to_hw
         self.rgb_transform = rgb_transform
         self.move_invalid_to_far_plane = move_invalid_to_far_plane
+        self.clean_nans_for_diffusion = clean_nans_for_diffusion  # Store the flag
 
         # additional arguments
         self.read_event_via = io_args['read_event_via']
@@ -162,9 +164,9 @@ class BaseDepthDataset(Dataset):
     def _load_rgb_data(self, rgb_rel_path):
         # Read RGB data
         rgb = self._read_rgb_file(rgb_rel_path)
-        # Note: For mvsec and new nbin encoding, comment this out, however, this need to be discussed.
-        # rgb_norm = rgb / 255.0 * 2.0 - 1.0  #  [0, 255] -> [-1, 1]
-        rgb_norm = rgb
+        #TODO: For mvsec and new nbin encoding, comment this normalization out, however, this need to be discussed for carla
+        rgb_norm = rgb / 255.0 * 2.0 - 1.0  #  [0, 255] -> [-1, 1]
+        # rgb_norm = rgb
 
         outputs = {
             "rgb_int": torch.from_numpy(rgb).int(),
@@ -238,11 +240,14 @@ class BaseDepthDataset(Dataset):
         return depth_decoded
 
 
-    #question?
+    #TODO: valid mask about nans
     def _get_valid_mask(self, depth: torch.Tensor):
         is_finite = torch.isfinite(depth)
+        # exclude zeros (and negatives)
+        positive = depth > 0
+        # within [min_depth, max_depth]
         in_range = (depth >= self.min_depth) & (depth <= self.max_depth)
-        return (is_finite & in_range).bool()
+        return (is_finite & positive & in_range)
 
     # def _get_valid_mask(self, depth: torch.Tensor):
     #     valid_mask = torch.logical_and(
@@ -252,10 +257,70 @@ class BaseDepthDataset(Dataset):
     #     ).bool()
     #     return valid_mask
 
+    def _sanitize_depth_tensor(self, depth: torch.Tensor, for_diffusion: bool = False) -> torch.Tensor:
+        """
+        Clean up depth tensors by replacing invalid values with appropriate depth values.
+        
+        Args:
+            depth: Input depth tensor
+            for_diffusion: If True, aggressively clean for diffusion models that need finite values
+        
+        Strategy:
+            - NaNs → 0 (foreground, will be masked out)
+            - Values < min_depth → min_depth (will normalize to -1)  
+            - Values > max_depth → max_depth (will normalize to +1, black in visualization)
+        """
+        if for_diffusion:
+            clean_depth = depth.clone()
+            
+            # Handle NaNs: set to 0 (foreground, but will be masked)
+            nan_mask = torch.isnan(clean_depth)
+            clean_depth[nan_mask] = 0.0
+            
+            # Handle out-of-range values: clamp to [min_depth, max_depth]
+            # This ensures proper normalization behavior:
+            # - Too close → min_depth → normalize to -1
+            # - Too far → max_depth → normalize to +1 → black in visualization
+            # clean_depth = torch.clamp(clean_depth, min=self.min_depth, max=self.max_depth)
+            
+        else:
+            # For E2D models: preserve NaNs, let valid masks handle exclusion
+            clean_depth = depth
+            
+        return clean_depth
+
+    def _debug_nan_status(self, rasters, stage="unknown"):
+        """Helper method to debug NaN presence in the dataset."""
+        if not __debug__:  # Only runs in debug mode
+            return
+
+        nan_info = {}
+        for key, tensor in rasters.items():
+            if isinstance(tensor, torch.Tensor):
+                nan_count = torch.isnan(tensor).sum().item()
+                if nan_count > 0:
+                    nan_info[key] = nan_count
+
+        if nan_info:
+            print(f"[DEBUG] NaNs found at {stage}: {nan_info}")
+        else:
+            print(f"[DEBUG] No NaNs at {stage} ✓")
+
     def _training_preprocess(self, rasters):
         # Augmentation
         if self.augm_args is not None and self.mode == DatasetMode.TRAIN:
             rasters = self._augment_data(rasters)
+
+        # Resize
+        if self.resize_to_hw is not None:
+            resize_transform = Resize(
+                size=self.resize_to_hw, interpolation=InterpolationMode.BILINEAR, antialias=True
+            ) # originally nearest exact
+
+            def is_image_like(t):
+                return isinstance(t, torch.Tensor) and t.ndim == 3  # [C,H,W]
+
+            rasters = {k: resize_transform(v) for k, v in rasters.items()}
 
         if self.augm_args is not None and "random_crop_hw" in self.augm_args:
             hw = self.augm_args["random_crop_hw"]
@@ -264,12 +329,27 @@ class BaseDepthDataset(Dataset):
             else:
                 rasters = self._center_crop(rasters, hw)
 
+        # **CONDITIONAL NaN HANDLING**: Clean for diffusion models, preserve for E2D models
+        # self._debug_nan_status(rasters, "before_processing")
+        
+        # Check if we should clean NaNs (for diffusion models that need finite inputs)
+        clean_nans = getattr(self, 'clean_nans_for_diffusion', False)
+        
+        if clean_nans:
+            # CRITICAL: Store original NaN locations to ensure consistent valid masks
+            original_nan_mask_raw = torch.isnan(rasters["depth_raw_linear"])
+            original_nan_mask_filled = torch.isnan(rasters["depth_filled_linear"])
+            
+            # Pre-clean NaNs for diffusion models BEFORE normalization
+            rasters["depth_raw_linear"] = self._sanitize_depth_tensor(rasters["depth_raw_linear"], for_diffusion=True)
+            rasters["depth_filled_linear"] = self._sanitize_depth_tensor(rasters["depth_filled_linear"], for_diffusion=True)
+            
+            # CRITICAL: Ensure consistent masking - original NaNs stay invalid regardless of replacement value
+            rasters["valid_mask_raw"] = rasters["valid_mask_raw"] & ~original_nan_mask_raw
+            rasters["valid_mask_filled"] = rasters["valid_mask_filled"] & ~original_nan_mask_filled
 
-        # # debug
-        # if torch.isnan(rasters["depth_raw_linear"]).any():
-        #     print("[DEBUG] ⚠️ depth_raw_linear contains NaNs")
 
-        # Normalization
+        # Normalization (depth_transform should handle NaN pixels appropriately)
         rasters["depth_raw_norm"] = self.depth_transform(
             rasters["depth_raw_linear"], rasters["valid_mask_raw"]
         ).clone()
@@ -277,15 +357,9 @@ class BaseDepthDataset(Dataset):
             rasters["depth_filled_linear"], rasters["valid_mask_filled"]
         ).clone()
 
-        # # --- DEBUG: after normalization ---
-        # # Quick NaN checks after normalization
-        # if torch.isnan(rasters["depth_raw_norm"]).any():
-        #     print("[DEBUG] ⚠️ depth_raw_norm contains NaNs")
-        # if torch.isnan(rasters["depth_filled_norm"]).any():
-        #     print("[DEBUG] ⚠️ depth_filled_norm contains NaNs")
+        # self._debug_nan_status(rasters, "after_normalization")
 
-
-        # Set invalid pixel to far plane
+        # Set invalid pixel to far plane (this should now work more reliably)
         if self.move_invalid_to_far_plane:
             if self.depth_transform.far_plane_at_max:
                 rasters["depth_filled_norm"][~rasters["valid_mask_filled"]] = (
@@ -295,13 +369,6 @@ class BaseDepthDataset(Dataset):
                 rasters["depth_filled_norm"][~rasters["valid_mask_filled"]] = (
                     self.depth_transform.norm_min
                 )
-
-        # Resize
-        if self.resize_to_hw is not None:
-            resize_transform = Resize(
-                size=self.resize_to_hw, interpolation=InterpolationMode.BILINEAR, antialias=True
-            ) # originally nearest exact
-            rasters = {k: resize_transform(v) for k, v in rasters.items()}
 
         return rasters
 

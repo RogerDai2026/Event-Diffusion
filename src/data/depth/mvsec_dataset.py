@@ -37,7 +37,7 @@ class MVSECDataset(BaseDepthDataset):
     ) -> None:
         super().__init__(
             # MVSEC data parameter
-            min_depth=1e-5,
+            min_depth=0,
             max_depth=250, # 1000.0,
             has_filled_depth=False,
             name_mode=DepthFileNameMode.id,
