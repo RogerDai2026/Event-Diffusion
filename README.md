@@ -38,17 +38,29 @@ Event cameras output **asynchronous per-pixel brightness changes (“events”)*
 - <img width="863" height="565" alt="pipeline (1)" src="https://github.com/user-attachments/assets/92c380dd-cd26-4bd2-b7dd-bdd959f1821b" />
 
 ### Product-of-Experts fusion (PoE)
-When both modalities are present, PoE combines Gaussian posteriors by adding precisions; when missing, it defaults to the available modality posterior.
+When both modalities are present, PoE combines Gaussian posteriors by adding precisions; when missing, it defaults to the available modality posterior
 
 <img width="1456" height="600" alt="poe" src="https://github.com/user-attachments/assets/4bff4e84-6687-4f7e-ba66-0ab5b7d7d008" />
+
+PoE Reconstruction Result (MVSEC;DSEC) 
+MVSEC Event reconstruction
+<img width="2400" height="600" alt="mvsec_event" src="https://github.com/user-attachments/assets/8461934b-98ee-40e8-8fda-b5d033468f8f" />
+
+MVSEC Depth reconstruction
+<img width="5600" height="1200" alt="mvsec_depth" src="https://github.com/user-attachments/assets/a906aeb3-0921-41db-b997-381b3ae59d49" />
+
+DSEC Event reconstruction
+<img width="2400" height="600" alt="dsec_fintune_event" src="https://github.com/user-attachments/assets/c7e7c353-e5f6-4cda-87d0-6c1c93b44ad0" />
+
+DSEC Depth reconstruction
+<img width="5600" height="1200" alt="dsec_depth" src="https://github.com/user-attachments/assets/ef435c9c-5a63-43b4-a3e0-55079049ff56" />
 
 
 ### Teacher–student distillation (dense pseudo-depth)
 We use a pretrained RGB→depth model to generate **dense pseudo-labels** aligned to available depth where possible. This helps supervision where ground truth is sparse or contains NaNs.
 
-<img width="1402" height="710" alt="Screenshot 2025-11-09 at 2 01 46 PM" src="https://github.com/user-attachments/assets/73034aba-22c3-4d26-bc63-ff126efb69c2" />
+<img width="694" height="347" alt="Screenshot 2026-01-04 at 4 19 30 PM" src="https://github.com/user-attachments/assets/fcce3cae-5c90-41a7-b73e-268d1b9bba51" />
 
----
 
 ## Datasets
 
@@ -56,14 +68,6 @@ We use:
 - **Synthetic CARLA**: dense depth + controllable scenes (simulated event streams).
 - **MVSEC (real)**: event + depth sequences in indoor/outdoor settings.
 - **DSEC (real)**: driving sequences, larger resolution; depth derived from LiDAR disparity.
-
----
-
-## Depth masking for real data
-
-Real depth/disparity maps include invalid values (NaNs / out-of-range) due to registration and sensor artifacts.  
-We construct a boolean validity mask `V`, set invalid pixels to 0 before normalization, and compute losses/metrics **only on valid pixels**.
-
 ---
 
 ## Repository structure
@@ -76,3 +80,56 @@ We construct a boolean validity mask `V`, set invalid pixels to 0 before normali
 ├── training/                # Lightning trainers / callbacks / logging
 ├── scripts/                 # train/eval entrypoints
 └── README.md
+
+
+## Installation
+
+### Requirements
+- Python 3.9+ (recommended 3.10)
+- CUDA-capable GPU recommended (main experiments were run on NVIDIA A100 80GB)
+- PyTorch + PyTorch Lightning
+- Hydra
+- Weights & Biases (optional, for logging)
+
+### Setup
+> **TODO:** Add environment creation steps and dependency installation once the repo is finalized.  
+> **TODO:** Add `requirements.txt` / `environment.yml` and a minimal “quick start” command.
+
+### Dataset preparation
+> **TODO:** Add dataset download/preprocessing instructions and expected directory structure.  
+> Recommended: keep dataset root paths in `configs/data/*.yaml` (Hydra) rather than hardcoding paths.
+
+---
+## Depth Prediction (Latent-space Diffusion)
+
+After learning a shared latent space for events and depth, we use a U-Net denoiser to perform **latent-space generation** and decode the predicted latent back to a depth map. This is intended to address:
+- **Input-size constraints** of pixel-space diffusion (operate on compressed latents)
+- **Alignment issues** by denoising in a modality-aligned latent space
+
+### Status
+This part of the pipeline is **in progress**.
+
+### Current Results on Synthetic and real (to be added)
+
+Synthetic
+<img width="5600" height="1800" alt="media_images_val_conditional_samples_3799_3387e36061445b09af40" src="https://github.com/user-attachments/assets/8365de5c-d20e-4616-8f24-b367e31004a3" />
+
+Real(DSEC)
+<img width="5600" height="1800" alt="media_images_val_conditional_samples_6671_5b03e28f694c8893aa44" src="https://github.com/user-attachments/assets/ac612043-9cd9-4119-9c7c-66abef52d20d" />
+
+---
+
+## Reproducibility
+
+We follow standard practices for reproducibility:
+
+- **Random seeds** are fixed for Python / NumPy / PyTorch.
+- **Hydra config logging:** each run records the full resolved configuration (model, data, losses, training).
+- **Checkpointing:** the best validation checkpoint is saved via PyTorch Lightning.
+- **Experiment tracking:** runs are logged to Weights & Biases when enabled.
+- **Metric scripts:** evaluation and plotting scripts are stored alongside training code.
+
+**Hardware note:** reported experiments were trained on an NVIDIA A100 GPU with 80GB VRAM.
+
+> **TODO:** Add exact software versions (PyTorch, Lightning, CUDA) and a minimal reproduction recipe once the pipeline is finalized.
+
