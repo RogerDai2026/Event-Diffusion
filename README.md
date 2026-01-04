@@ -35,7 +35,7 @@ Event cameras output **asynchronous per-pixel brightness changes (“events”)*
 - PoE fusion: merges encoder posteriors into a single latent distribution when both modalities exist.
 
 **Pipeline sketch:**
-- <img width="863" height="565" alt="pipeline (1)" src="https://github.com/user-attachments/assets/92c380dd-cd26-4bd2-b7dd-bdd959f1821b" />
+<img width="863" height="565" alt="pipeline (1)" src="https://github.com/user-attachments/assets/92c380dd-cd26-4bd2-b7dd-bdd959f1821b" />
 
 ### Product-of-Experts fusion (PoE)
 When both modalities are present, PoE combines Gaussian posteriors by adding precisions; when missing, it defaults to the available modality posterior
@@ -68,24 +68,6 @@ We use:
 - **Synthetic CARLA**: dense depth + controllable scenes (simulated event streams).
 - **MVSEC (real)**: event + depth sequences in indoor/outdoor settings.
 - **DSEC (real)**: driving sequences, larger resolution; depth derived from LiDAR disparity.
----
-
-## Installation
-
-### Requirements
-- Python 3.9+ (recommended 3.10)
-- CUDA-capable GPU recommended (main experiments were run on NVIDIA A100 80GB)
-- PyTorch + PyTorch Lightning
-- Hydra
-- Weights & Biases (optional, for logging)
-
-### Setup
-> **TODO:** Add environment creation steps and dependency installation once the repo is finalized.  
-> **TODO:** Add `requirements.txt` / `environment.yml` and a minimal “quick start” command.
-
-### Dataset preparation
-> **TODO:** Add dataset download/preprocessing instructions and expected directory structure.  
-> Recommended: keep dataset root paths in `configs/data/*.yaml` (Hydra) rather than hardcoding paths.
 
 ---
 ## Depth Prediction (Latent-space Diffusion)
@@ -97,7 +79,7 @@ After learning a shared latent space for events and depth, we use a U-Net denois
 ### Status
 This part of the pipeline is **in progress**.
 
-### Current Results on Synthetic and real (to be added)
+### Current Results on Synthetic and Real datasets
 
 Synthetic
 <img width="5600" height="1800" alt="media_images_val_conditional_samples_3799_3387e36061445b09af40" src="https://github.com/user-attachments/assets/8365de5c-d20e-4616-8f24-b367e31004a3" />
@@ -119,5 +101,16 @@ We follow standard practices for reproducibility:
 
 **Hardware note:** reported experiments were trained on an NVIDIA A100 GPU with 80GB VRAM.
 
-> **TODO:** Add exact software versions (PyTorch, Lightning, CUDA) and a minimal reproduction recipe once the pipeline is finalized.
+## Installation
+
+### Requirements
+- Python 3.9+ (recommended 3.10)
+- CUDA-capable GPU recommended (main experiments were run on NVIDIA A100 80GB)
+- PyTorch + PyTorch Lightning
+- Hydra
+- Weights & Biases (optional, for logging)
+
+### Dataset preparation
+> Recommended: keep dataset root paths in `configs/data/*.yaml` (Hydra) rather than hardcoding paths.
+
 
