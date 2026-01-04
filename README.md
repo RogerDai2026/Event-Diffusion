@@ -16,11 +16,11 @@ Event cameras output **asynchronous per-pixel brightness changes (“events”)*
 ---
 ## Highlights (Depth Prediction)
 **Synthetic**
-
+*Top to bottom: event input → predicted depth → ground truth.*  
    <img width="900" alt="synthetic_depth_pred" src="https://github.com/user-attachments/assets/8365de5c-d20e-4616-8f24-b367e31004a3" />
 
 **Real (DSEC)**
-
+*Top to bottom: event input → predicted depth → ground truth.*  
    <img width="900" alt="real_depth_pred" src="https://github.com/user-attachments/assets/ac612043-9cd9-4119-9c7c-66abef52d20d" />
 
 ---
