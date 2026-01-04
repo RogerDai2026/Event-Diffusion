@@ -1,133 +1,90 @@
-# Monocular Depth Estimation Using Residual Diffusion
+# Depth Estimation with an Event Camera (Cross-Modality Autoencoder + PoE)
 
-## 🚀 Overview
+This project studies **monocular depth estimation from event camera streams** (events → depth).  
+Event cameras output **asynchronous per-pixel brightness changes (“events”)** rather than intensity frames, which makes standard vision pipelines difficult. Meanwhile, **dense and reliable depth supervision is scarce**. To address these challenges, we build a **cross-modality autoencoder** that aligns **events** and **depth** in a **shared latent space**, enabling training on both **paired** and **unpaired** data via **weak supervision**. We also include a **teacher–student distillation** component to generate dense pseudo-labels when ground truth is incomplete.
 
-This repository implements a two‐stage **monocular depth estimation** pipeline based on **residual diffusion modeling**, inspired by NVIDIA’s CorrDiff framework:
-
-1. **Regression UNet**
-   A high-capacity U-Net backbone (`SongUNet` / `SongUNetPosEmbd`) is trained with a simple ℓ₂ (MSE) loss to predict the **conditional mean** depth map from an event-based input.
-
-2. **Residual Diffusion UNet**
-   A second diffusion-based U-Net learns to model the **residual** (fine-scale detail and uncertainty) on top of the regression mean. At inference time, the two outputs are summed to produce sharper, more realistic depth estimates.
+> Reference write-up: *Stats450_Project.pdf* (paper-style report for this project).  
 
 ---
 
-## 📖 Background
+## TL;DR (What we built)
 
-Classic monocular depth estimation often struggles with fine details and uncertainty quantification. Residual diffusion modeling:
-
-* **Decouples** the coarse mean prediction (learned with MSE) from the stochastic high-frequency residual.
-* **Leverages** denoising score matching to learn a diffusion process over those residuals.
-* **Improves** both quantitative metrics (MSE, RMSE, abs\_rel, sq\_rel, δ-accuracy) and visual fidelity of predicted depth maps.
+- **Two modality-specific VAEs** (events VAE + depth VAE) mapped into a **shared, geometry-aware latent space** with ~**4× compression**.
+- **Product-of-Experts (PoE)** fusion combines event/depth encoder posteriors when both are available; falls back to unimodal when one modality is missing.
+- **Event branch** uses a **weighted NLL-style loss** + **learnable log-variance** to respect event sparsity.
+- **Depth branch** leverages a **Marigold-compatible pretrained VAE** for stable depth encoding/decoding.
+- Designed as a **front end for latent-space diffusion** (U-Net denoiser operates in the aligned latent space).
 
 ---
 
-## 🏗️ Project Structure
+## Key challenges we target
+
+1. **Input size restriction**  
+   Pixel-space diffusion often assumes ~256×256 inputs, but real event datasets can be larger (e.g., DSEC depth at 640×480).  
+   → We **diffuse in latent space** (compressed grids).
+
+2. **Data scarcity / incomplete depth labels**  
+   Paired event–depth data is limited and depth maps often contain NaNs / invalid regions.  
+   → We train with **PoE + weak supervision** on paired and unimodal samples, and use **distillation** for denser supervision.
+
+---
+
+## Method overview
+
+### Cross-modality autoencoder (shared latent)
+- Event encoder/decoder: learns to reconstruct sparse event tensors.
+- Depth encoder/decoder: uses pretrained VAE (compatible with latent diffusion depth pipelines).
+- PoE fusion: merges encoder posteriors into a single latent distribution when both modalities exist.
+
+**Pipeline sketch (add your figure here):**
+- **[TODO: insert overview figure]**
+  - Path suggestion: `assets/pipeline_overview.png`
+  - Markdown:
+    ```text
+    ![Method overview](assets/pipeline_overview.png)
+    ```
+
+### Product-of-Experts fusion (PoE)
+When both modalities are present, PoE combines Gaussian posteriors by adding precisions; when missing, it defaults to the available modality posterior.
+
+- **[TODO: insert PoE fusion diagram]**
+  - Path suggestion: `assets/poe_fusion.png`
+
+### Teacher–student distillation (dense pseudo-depth)
+We use a pretrained RGB→depth model to generate **dense pseudo-labels** aligned to available depth where possible. This helps supervision where ground truth is sparse or contains NaNs.
+
+- **[TODO: insert distillation depth examples]**
+  - Path suggestion: `assets/distillation_depth.png`
+
+---
+
+## Datasets
+
+We use:
+- **Synthetic CARLA**: dense depth + controllable scenes (simulated event streams).
+- **MVSEC (real)**: event + depth sequences in indoor/outdoor settings.
+- **DSEC (real)**: driving sequences, larger resolution; depth derived from LiDAR disparity.
+
+**[TODO: insert dataset example montage]**
+- Path suggestion: `assets/datasets.png`
+
+---
+
+## Depth masking for real data
+
+Real depth/disparity maps include invalid values (NaNs / out-of-range) due to registration and sensor artifacts.  
+We construct a boolean validity mask `V`, set invalid pixels to 0 before normalization, and compute losses/metrics **only on valid pixels**.
+
+---
+
+## Repository structure (suggested)
 
 ```text
 .
-├── configs/
-│   ├── baseline_regression.yaml    # Regression-only training
-│   └── baseline_diffusion.yaml     # Two-stage CorrDiff training
-├── src/
-│   ├── models/
-│   │   └── corrdiff_unet.py        # LightningModules for regression & diffusion
-│   ├── utils/
-│   │   ├── corr_diff_utils/        # ResLoss, inference helpers
-│   │   └── callbacks/              # WandB logging, sample visualization
-│   └── train.py                    # Entry point for training & resuming
-├── data/                           # Dataloaders & example datasets
-└── README.md                       # This file
-```
-
----
-
-## ⚙️ Installation
-
-1. **Clone the repo**
-
-   ```bash
-   git clone https://github.com/your-org/monocular-depth-residual-diffusion.git
-   cd monocular-depth-residual-diffusion
-   ```
-
-2. **Create a conda environment**
-
-   ```bash
-   conda create -n depth-diffusion python=3.10
-   conda activate depth-diffusion
-   pip install -r requirements.txt
-   ```
-
-3. **Prepare your data**
-
-   * Place your event-frame → depth pairs in `data/` following the example structure.
-   * Update `configs/data.yaml` if you use a custom dataset.
-
----
-
-## 🚄 Quick Start
-
-### 1. Train the regression UNet (mean predictor)
-
-```bash
-python src/train.py \
-  experiment=train_baseline_regression \
-  trainer.max_epochs=30 \
-  model=baseline_regression
-```
-
-### 2. Train the residual diffusion UNet
-
-```bash
-python src/train.py \
-  experiment=train_baseline_diffusion \
-  trainer.max_epochs=50 \
-  model=baseline_diffusion \
-  model.regression_net_ckpt=logs/train_baseline_regression/version_0/checkpoints/last.ckpt
-```
-
-### 3. Resume from checkpoint (same W\&B run)
-
-```bash
-python src/train.py \
-  trainer.ckpt_path=logs/train_baseline_diffusion/version_0/checkpoints/last.ckpt \
-  +logger.wandb.id=YOUR_RUN_ID \
-  +logger.wandb.resume=true
-```
-
----
-
-## 🔧 Configuration
-
-All hyperparameters and model choices are exposed via Hydra configs:
-
-* **`configs/baseline_regression.yaml`**
-  Regression-only U-Net settings (learning rate, architecture, loss).
-
-* **`configs/baseline_diffusion.yaml`**
-  Two-stage CorrDiff settings:
-
-  * `net`: diffusion U-Net wrapper
-  * `regression_model_cfg`: regression U-Net constructor args
-  * `criterion`: `ResLoss` hyperparameters (patch sizes, σ schedule)
-  * `sampling`: sampler settings (overlap, boundary, steps)
-
----
-
-## 📋 License
-
-This project is licensed under the [Apache 2.0 License](LICENSE).
-
----
-
-## 🤝 Contributing
-
-We welcome issues and PRs! Please read our [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
----
-
-## 🧑‍💻 Contact
-
-**Roger Dai** ([qd8@rice.edu](mailto:qd8@rice.edu))
-**GitHub**: [https://github.com/your-org/monocular-depth-residual-diffusion](https://github.com/your-org/monocular-depth-residual-diffusion)
+├── configs/                 # Hydra configs (datasets, models, losses, training)
+├── data/                    # dataset loaders / preprocessing scripts
+├── models/                  # VAE modules, PoE fusion, denoiser (UNet), etc.
+├── training/                # Lightning trainers / callbacks / logging
+├── scripts/                 # train/eval entrypoints
+├── assets/                  # figures for README (placeholders)
+└── README.md
