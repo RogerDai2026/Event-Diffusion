@@ -42,18 +42,18 @@ When both modalities are present, PoE combines Gaussian posteriors by adding pre
 
 <img width="1456" height="600" alt="poe" src="https://github.com/user-attachments/assets/4bff4e84-6687-4f7e-ba66-0ab5b7d7d008" />
 
-PoE Reconstruction Result (MVSEC;DSEC) 
+PoE Reconstruction Result (reconstruction qualities helps to infer how well PoE framework learns the latent representation of event and depth modalities)
 MVSEC Event reconstruction
 <img width="2400" height="600" alt="mvsec_event" src="https://github.com/user-attachments/assets/8461934b-98ee-40e8-8fda-b5d033468f8f" />
 
 MVSEC Depth reconstruction
-<img width="5600" height="1200" alt="mvsec_depth" src="https://github.com/user-attachments/assets/a906aeb3-0921-41db-b997-381b3ae59d49" />
+<img width="2400" height="600" alt="mvsec_depth" src="https://github.com/user-attachments/assets/a906aeb3-0921-41db-b997-381b3ae59d49" />
 
 DSEC Event reconstruction
 <img width="2400" height="600" alt="dsec_fintune_event" src="https://github.com/user-attachments/assets/c7e7c353-e5f6-4cda-87d0-6c1c93b44ad0" />
 
 DSEC Depth reconstruction
-<img width="5600" height="1200" alt="dsec_depth" src="https://github.com/user-attachments/assets/ef435c9c-5a63-43b4-a3e0-55079049ff56" />
+<img width="2400" height="600" alt="dsec_depth" src="https://github.com/user-attachments/assets/ef435c9c-5a63-43b4-a3e0-55079049ff56" />
 
 
 ### Teacher–student distillation (dense pseudo-depth)
@@ -69,18 +69,6 @@ We use:
 - **MVSEC (real)**: event + depth sequences in indoor/outdoor settings.
 - **DSEC (real)**: driving sequences, larger resolution; depth derived from LiDAR disparity.
 ---
-
-## Repository structure
-
-```text
-.
-├── configs/                 # Hydra configs (datasets, models, losses, training)
-├── data/                    # dataset loaders / preprocessing scripts
-├── models/                  # VAE modules, PoE fusion, denoiser (UNet), etc.
-├── training/                # Lightning trainers / callbacks / logging
-├── scripts/                 # train/eval entrypoints
-└── README.md
-
 
 ## Installation
 
