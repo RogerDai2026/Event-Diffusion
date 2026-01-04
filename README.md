@@ -3,8 +3,6 @@
 This project studies **monocular depth estimation from event camera streams** (events → depth).  
 Event cameras output **asynchronous per-pixel brightness changes (“events”)** rather than intensity frames, which makes standard vision pipelines difficult. Meanwhile, **dense and reliable depth supervision is scarce**. To address these challenges, we build a **cross-modality autoencoder** that aligns **events** and **depth** in a **shared latent space**, enabling training on both **paired** and **unpaired** data via **weak supervision**. We also include a **teacher–student distillation** component to generate dense pseudo-labels when ground truth is incomplete.
 
-> Reference write-up: *Stats450_Project.pdf* (paper-style report for this project).  
-
 ---
 
 ## TL;DR (What we built)
@@ -36,25 +34,19 @@ Event cameras output **asynchronous per-pixel brightness changes (“events”)*
 - Depth encoder/decoder: uses pretrained VAE (compatible with latent diffusion depth pipelines).
 - PoE fusion: merges encoder posteriors into a single latent distribution when both modalities exist.
 
-**Pipeline sketch (add your figure here):**
-- **[TODO: insert overview figure]**
-  - Path suggestion: `assets/pipeline_overview.png`
-  - Markdown:
-    ```text
-    ![Method overview](assets/pipeline_overview.png)
-    ```
+**Pipeline sketch:**
+- <img width="863" height="565" alt="pipeline (1)" src="https://github.com/user-attachments/assets/92c380dd-cd26-4bd2-b7dd-bdd959f1821b" />
 
 ### Product-of-Experts fusion (PoE)
 When both modalities are present, PoE combines Gaussian posteriors by adding precisions; when missing, it defaults to the available modality posterior.
 
-- **[TODO: insert PoE fusion diagram]**
-  - Path suggestion: `assets/poe_fusion.png`
+<img width="1456" height="600" alt="poe" src="https://github.com/user-attachments/assets/4bff4e84-6687-4f7e-ba66-0ab5b7d7d008" />
+
 
 ### Teacher–student distillation (dense pseudo-depth)
 We use a pretrained RGB→depth model to generate **dense pseudo-labels** aligned to available depth where possible. This helps supervision where ground truth is sparse or contains NaNs.
 
-- **[TODO: insert distillation depth examples]**
-  - Path suggestion: `assets/distillation_depth.png`
+<img width="1402" height="710" alt="Screenshot 2025-11-09 at 2 01 46 PM" src="https://github.com/user-attachments/assets/73034aba-22c3-4d26-bc63-ff126efb69c2" />
 
 ---
 
@@ -65,9 +57,6 @@ We use:
 - **MVSEC (real)**: event + depth sequences in indoor/outdoor settings.
 - **DSEC (real)**: driving sequences, larger resolution; depth derived from LiDAR disparity.
 
-**[TODO: insert dataset example montage]**
-- Path suggestion: `assets/datasets.png`
-
 ---
 
 ## Depth masking for real data
@@ -77,7 +66,7 @@ We construct a boolean validity mask `V`, set invalid pixels to 0 before normali
 
 ---
 
-## Repository structure (suggested)
+## Repository structure
 
 ```text
 .
@@ -86,5 +75,4 @@ We construct a boolean validity mask `V`, set invalid pixels to 0 before normali
 ├── models/                  # VAE modules, PoE fusion, denoiser (UNet), etc.
 ├── training/                # Lightning trainers / callbacks / logging
 ├── scripts/                 # train/eval entrypoints
-├── assets/                  # figures for README (placeholders)
 └── README.md
